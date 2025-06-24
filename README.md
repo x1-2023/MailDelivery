@@ -46,7 +46,7 @@ docker run -d \
   -p 4000:80 \
   -p 25:25 \
   -v /opt/maildelivery/data:/var/www/opentrashmail/data \
-  maildelivery:latest
+  nodegenius/mailsystem:latest
 \`\`\`
 
 **Example with real domain:**
@@ -61,7 +61,7 @@ docker run -d \
   -p 4000:80 \
   -p 25:25 \
   -v /home/user/maildelivery-data:/var/www/opentrashmail/data \
-  maildelivery:latest
+  nodegenius/mailsystem:latest
 \`\`\`
 
 ### Option 2: Docker Compose
@@ -122,7 +122,7 @@ docker start privatemaildelivery    # Start
 docker rm privatemaildelivery       # Remove (when stopped)
 
 # Update container
-docker pull maildelivery:latest
+docker pull nodegenius/mailsystem:latest
 docker stop privatemaildelivery
 docker rm privatemaildelivery
 # Run the docker run command again with updated image
@@ -533,7 +533,7 @@ docker logs privatemaildelivery | grep -i error
 tar -czf maildelivery-backup-$(date +%Y%m%d).tar.gz /opt/maildelivery/data/
 
 # Update container
-docker pull maildelivery:latest
+docker pull nodegenius/mailsystem:latest
 docker-compose down && docker-compose up -d
 \`\`\`
 
@@ -571,7 +571,7 @@ sudo apt install fail2ban
 sudo apt update && sudo apt upgrade
 
 # Container updates
-docker pull maildelivery:latest
+docker pull nodegenius/mailsystem:latest
 docker-compose down && docker-compose up -d
 
 # Security monitoring
@@ -674,13 +674,13 @@ npm start
 
 \`\`\`bash
 # Build image
-docker build -t maildelivery:latest .
+docker build -t nodegenius/mailsystem:latest .
 
 # Run locally
-docker run -p 4000:80 -p 25:25 maildelivery:latest
+docker run -p 4000:80 -p 25:25 nodegenius/mailsystem:latest
 
 # Test build
-docker run --rm -it maildelivery:latest /bin/sh
+docker run --rm -it nodegenius/mailsystem:latest /bin/sh
 \`\`\`
 
 ---
@@ -733,7 +733,7 @@ docker logs privatemaildelivery
 docker restart privatemaildelivery
 
 # Update container
-docker pull maildelivery:latest
+docker pull nodegenius/mailsystem:latest
 docker-compose down && docker-compose up -d
 
 # Access container shell
