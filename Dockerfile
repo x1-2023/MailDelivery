@@ -9,14 +9,17 @@ WORKDIR /var/www/opentrashmail
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (include devDependencies for build)
+RUN npm ci
 
 # Copy app source
 COPY . .
 
 # Build the application
 RUN npm run build
+
+# (Optional) Remove node_modules and install only production dependencies to reduce image size
+RUN rm -rf node_modules && npm ci --only=production
 
 # Create data directory
 RUN mkdir -p /var/www/opentrashmail/data
