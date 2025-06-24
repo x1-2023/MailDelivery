@@ -19,9 +19,9 @@ A modern, full-featured temporary email service with Gmail-like interface and co
 ## 📧 How Email Reception Works
 
 ### **System Architecture:**
-\`\`\`
+```
 Email sent → MX Record → Your Server:25 → SMTP Server → Parse → Database → Web UI
-\`\`\`
+```
 
 ### **Built-in SMTP Server:**
 - Integrated SMTP server runs on **port 25**
@@ -35,7 +35,7 @@ Email sent → MX Record → Your Server:25 → SMTP Server → Parse → Databa
 
 ### Option 1: Docker Run (Recommended)
 
-\`\`\`bash
+```
 docker run -d \
   --restart=unless-stopped \
   --name privatemaildelivery \
@@ -47,10 +47,10 @@ docker run -d \
   -p 25:25 \
   -v /opt/maildelivery/data:/var/www/opentrashmail/data \
   nodegenius/mailsystem:latest
-\`\`\`
+```
 
 **Example with real domain:**
-\`\`\`bash
+```
 docker run -d \
   --restart=unless-stopped \
   --name privatemaildelivery \
@@ -62,18 +62,18 @@ docker run -d \
   -p 25:25 \
   -v /home/user/maildelivery-data:/var/www/opentrashmail/data \
   nodegenius/mailsystem:latest
-\`\`\`
+```
 
 ### Option 2: Docker Compose
 
 1. **Clone the repository:**
-\`\`\`bash
-git clone <repository-url>
+```
+git clone https://github.com/x1-2023/MailDelivery.git
 cd maildelivery-system
-\`\`\`
+```
 
 2. **Create/Edit docker-compose.yml:**
-\`\`\`yaml
+```yaml
 version: '3.8'
 
 services:
@@ -98,19 +98,19 @@ services:
 networks:
   maildelivery-net:
     driver: bridge
-\`\`\`
+```
 
 3. **Start the service:**
-\`\`\`bash
+```
 docker-compose up -d
-\`\`\`
+```
 
 ### Docker Management Commands
 
-\`\`\`bash
+```
 # View running containers
 docker ps
-
+```
 # View logs
 docker logs privatemaildelivery
 docker logs -f privatemaildelivery  # Follow logs in real-time
@@ -132,27 +132,27 @@ docker exec -it privatemaildelivery /bin/sh
 
 # Check container resource usage
 docker stats privatemaildelivery
-\`\`\`
+```
 
 ---
 
 ## 🔧 Complete Setup Requirements
 
 ### **1. Server/VPS Requirements:**
-\`\`\`bash
+```
 # Minimum specifications
 - RAM: 512MB+ (1GB+ recommended)
 - Storage: 1GB+ (depends on email volume)
 - OS: Linux (Ubuntu/CentOS/Debian)
 - Network: Unblocked port 25 (critical!)
-\`\`\`
+```
 
 ⚠️ **Important**: Many residential ISPs and some cloud providers block port 25. Ensure your hosting provider allows SMTP traffic on port 25.
 
 ### **2. Domain & DNS Configuration:**
 
 #### **Required DNS Records:**
-\`\`\`bash
+```
 # MX Record (Mail Exchange) - REQUIRED
 yourdomain.com.     IN  MX  10  yourdomain.com.
 
@@ -161,7 +161,7 @@ yourdomain.com.     IN  A   YOUR_SERVER_IP
 
 # Optional: Subdomain for mail service
 mail.yourdomain.com. IN  A   YOUR_SERVER_IP
-\`\`\`
+```
 
 #### **Cloudflare DNS Setup Guide:**
 
@@ -171,40 +171,40 @@ mail.yourdomain.com. IN  A   YOUR_SERVER_IP
 - Go to **DNS** → **Records**
 
 **Step 2: Add A Record**
-\`\`\`
+```
 Type: A
 Name: @ (or your domain name)
 IPv4 address: YOUR_SERVER_IP
 Proxy status: DNS only (gray cloud)
 TTL: Auto
-\`\`\`
+```
 
 **Step 3: Add MX Record**
-\`\`\`
+```
 Type: MX
 Name: @ (or your domain name)  
 Mail server: yourdomain.com
 Priority: 10
 TTL: Auto
-\`\`\`
+```
 
 **Example Configuration:**
-\`\`\`
+```
 # A Record
 yourdomain.com    A    YOUR_SERVER_IP    (DNS only)
 
 # MX Record  
 yourdomain.com    MX   yourdomain.com    Priority: 10
-\`\`\`
+```
 
 **Advanced: Wildcard Support (Optional)**
-\`\`\`
+```
 # A Record for mail subdomain
 mail.yourdomain.com    A     YOUR_SERVER_IP    (DNS only)
 
 # Wildcard MX Record (accepts all subdomains)
 *.yourdomain.com       MX    mail.yourdomain.com    Priority: 10
-\`\`\`
+```
 
 **Step 4: Verify Configuration**
 - Wait 5-10 minutes for DNS propagation
@@ -217,7 +217,7 @@ mail.yourdomain.com    A     YOUR_SERVER_IP    (DNS only)
 - DNS propagation on Cloudflare is usually fast (5-10 minutes)
 
 #### **DNS Verification:**
-\`\`\`bash
+```
 # Check MX record
 dig MX yourdomain.com
 
@@ -226,35 +226,35 @@ dig MX yourdomain.com
 
 # Check A record
 dig A yourdomain.com
-\`\`\`
+```
 
 ### **3. Firewall Configuration:**
 
 #### **Ubuntu/Debian:**
-\`\`\`bash
+```
 sudo ufw allow 25/tcp    # SMTP (Required)
 sudo ufw allow 4000/tcp  # Web Interface
 sudo ufw allow 22/tcp    # SSH (Management)
 sudo ufw enable
-\`\`\`
+```
 
 #### **CentOS/RHEL:**
-\`\`\`bash
+```
 sudo firewall-cmd --permanent --add-port=25/tcp
 sudo firewall-cmd --permanent --add-port=4000/tcp
 sudo firewall-cmd --permanent --add-port=22/tcp
 sudo firewall-cmd --reload
-\`\`\`
+```
 
 #### **Check Open Ports:**
-\`\`\`bash
+```
 # Verify ports are listening
 sudo netstat -tlnp | grep :25
 sudo netstat -tlnp | grep :4000
 
 # Test SMTP connection externally
 telnet yourdomain.com 25
-\`\`\`
+```
 
 ---
 
@@ -293,7 +293,7 @@ After starting the container, access these URLs:
 
 If you want to use standard ports (80/443) instead of 4000:
 
-\`\`\`nginx
+```
 # /etc/nginx/sites-available/maildelivery
 server {
     listen 80;
@@ -307,10 +307,10 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
-\`\`\`
+```
 
 ### **SSL with Let's Encrypt (Optional):**
-\`\`\`bash
+```
 # Install certbot
 sudo apt install certbot python3-certbot-nginx
 
@@ -320,33 +320,33 @@ sudo certbot --nginx -d yourdomain.com -d mail.yourdomain.com
 # Auto-renewal
 sudo crontab -e
 # Add: 0 12 * * * /usr/bin/certbot renew --quiet
-\`\`\`
+```
 
 ---
 
 ## 📧 Testing Email Reception
 
 ### **1. Verify DNS Propagation:**
-\`\`\`bash
+```
 # Check MX record globally
 # Visit: https://dnschecker.org/
 # Enter your domain and select MX record
 
 # Command line check
 nslookup -type=MX yourdomain.com
-\`\`\`
+```
 
 ### **2. Test SMTP Connection:**
-\`\`\`bash
+```
 # Test from external server or different network
 telnet yourdomain.com 25
 
 # Expected response:
 # 220 yourdomain.com ESMTP
-\`\`\`
+```
 
 ### **3. Send Test Email:**
-\`\`\`bash
+```
 # From Gmail, Yahoo, Outlook, or any email provider
 # Send to: test@yourdomain.com
 # Subject: Test Email Reception
@@ -354,16 +354,16 @@ telnet yourdomain.com 25
 
 # Check logs for processing
 docker logs -f privatemaildelivery
-\`\`\`
+```
 
 ### **4. Verify in Web Interface:**
-\`\`\`bash
+```
 # Access web interface
 http://your-server-ip:4000
 
 # Generate email: test@yourdomain.com
 # Check if test email appears in inbox
-\`\`\`
+```
 
 ---
 
@@ -374,7 +374,7 @@ http://your-server-ip:4000
 #### **1. Emails Not Received:**
 
 **Check Container Status:**
-\`\`\`bash
+```
 # Container running?
 docker ps | grep maildelivery
 
@@ -383,10 +383,10 @@ docker logs privatemaildelivery
 
 # Check SMTP server
 docker exec privatemaildelivery netstat -tlnp | grep :25
-\`\`\`
+```
 
 **Verify DNS Configuration:**
-\`\`\`bash
+```
 # MX record correct?
 dig MX yourdomain.com
 
@@ -394,21 +394,21 @@ dig MX yourdomain.com
 dig A yourdomain.com
 
 # DNS propagation complete? (can take 24-48 hours)
-\`\`\`
+```
 
 **Network Issues:**
-\`\`\`bash
+```
 # Port 25 blocked by ISP/hosting provider?
 telnet yourdomain.com 25
 
 # Firewall blocking?
 sudo ufw status
 sudo iptables -L | grep 25
-\`\`\`
+```
 
 #### **2. Admin Panel Not Accessible:**
 
-\`\`\`bash
+```
 # Check if container is running
 docker ps
 
@@ -417,11 +417,11 @@ docker exec privatemaildelivery env | grep ADMIN_PASSWORD
 
 # Check port 4000
 sudo netstat -tlnp | grep :4000
-\`\`\`
+```
 
 #### **3. High Storage Usage:**
 
-\`\`\`bash
+```
 # Check database size
 docker exec privatemaildelivery ls -lah /var/www/opentrashmail/data/
 
@@ -430,11 +430,11 @@ docker exec privatemaildelivery ls -lah /var/www/opentrashmail/data/
 
 # Adjust retention period
 docker exec privatemaildelivery env | grep DELETE_OLDER_THAN_DAYS
-\`\`\`
+```
 
 #### **4. Performance Issues:**
 
-\`\`\`bash
+```
 # Check resource usage
 docker stats privatemaildelivery
 
@@ -443,7 +443,7 @@ df -h
 
 # Monitor email processing
 docker logs -f privatemaildelivery | grep "Email saved"
-\`\`\`
+```
 
 ---
 
@@ -482,7 +482,7 @@ Complete API documentation is available at `/api-docs` with:
 
 ### Key API Endpoints
 
-\`\`\`bash
+```
 # Generate new email
 POST /api/email/generate
 
@@ -497,7 +497,7 @@ DELETE /api/delete/[email]/[id]
 
 # Get email with attachments (JSON)
 GET /json/[email]/[id]
-\`\`\`
+```
 
 ---
 
@@ -505,7 +505,7 @@ GET /json/[email]/[id]
 
 ### **System Health Monitoring:**
 
-\`\`\`bash
+```
 # Container status
 docker ps
 docker stats privatemaildelivery
@@ -518,11 +518,11 @@ docker logs privatemaildelivery | grep "Email saved"
 
 # Error logs
 docker logs privatemaildelivery | grep -i error
-\`\`\`
+```
 
 ### **Regular Maintenance:**
 
-\`\`\`bash
+```
 # Weekly cleanup (automated via cron in container)
 # Manual cleanup via admin panel
 
@@ -535,7 +535,7 @@ tar -czf maildelivery-backup-$(date +%Y%m%d).tar.gz /opt/maildelivery/data/
 # Update container
 docker pull nodegenius/mailsystem:latest
 docker-compose down && docker-compose up -d
-\`\`\`
+```
 
 ---
 
@@ -544,16 +544,16 @@ docker-compose down && docker-compose up -d
 ### **Production Security Checklist:**
 
 #### **1. Strong Authentication:**
-\`\`\`bash
+```
 # Use strong admin password (20+ characters)
 ADMIN_PASSWORD="Very_Secure_Random_Password_2024!@#$"
 
 # Regular password rotation
 # Update every 90 days
-\`\`\`
+```
 
 #### **2. Network Security:**
-\`\`\`bash
+```
 # Firewall configuration
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
@@ -563,10 +563,10 @@ sudo ufw allow 4000/tcp  # Web interface
 
 # Consider fail2ban for brute force protection
 sudo apt install fail2ban
-\`\`\`
+```
 
 #### **3. Regular Updates:**
-\`\`\`bash
+```
 # System updates
 sudo apt update && sudo apt upgrade
 
@@ -577,10 +577,10 @@ docker-compose down && docker-compose up -d
 # Security monitoring
 # Monitor logs for suspicious activity
 # Regular security audits
-\`\`\`
+```
 
 #### **4. Data Protection:**
-\`\`\`bash
+```
 # Regular backups
 # Automated backup script
 #!/bin/bash
@@ -590,14 +590,14 @@ find /backup -name "maildelivery-*.tar.gz" -mtime +30 -delete
 
 # Encryption at rest (optional)
 # Use encrypted storage volumes
-\`\`\`
+```
 
 ---
 
 ## 🔄 Backup & Restore
 
 ### **Backup Data:**
-\`\`\`bash
+```
 # Stop container
 docker stop privatemaildelivery
 
@@ -610,10 +610,10 @@ docker cp privatemaildelivery:/tmp/backup.tar.gz ./backup.tar.gz
 
 # Start container
 docker start privatemaildelivery
-\`\`\`
+```
 
 ### **Restore Data:**
-\`\`\`bash
+```
 # Stop container
 docker stop privatemaildelivery
 
@@ -622,10 +622,10 @@ tar -xzf backup.tar.gz -C /opt/maildelivery/
 
 # Start container
 docker start privatemaildelivery
-\`\`\`
+```
 
 ### **Automated Backup Script:**
-\`\`\`bash
+```
 #!/bin/bash
 # /opt/scripts/backup-maildelivery.sh
 
@@ -642,13 +642,13 @@ tar -czf $BACKUP_DIR/maildelivery-$DATE.tar.gz $DATA_DIR
 find $BACKUP_DIR -name "maildelivery-*.tar.gz" -mtime +30 -delete
 
 echo "Backup completed: maildelivery-$DATE.tar.gz"
-\`\`\`
+```
 
-\`\`\`bash
+```
 # Add to crontab for daily backup at 2 AM
 crontab -e
 # Add: 0 2 * * * /opt/scripts/backup-maildelivery.sh
-\`\`\`
+```
 
 ---
 
@@ -656,7 +656,7 @@ crontab -e
 
 ### **Local Development:**
 
-\`\`\`bash
+```
 # Install dependencies
 npm install
 
@@ -668,11 +668,11 @@ npm run build
 
 # Start production server
 npm start
-\`\`\`
+```
 
 ### **Build Docker Image:**
 
-\`\`\`bash
+```
 # Build image
 docker build -t nodegenius/mailsystem:latest .
 
@@ -681,7 +681,7 @@ docker run -p 4000:80 -p 25:25 nodegenius/mailsystem:latest
 
 # Test build
 docker run --rm -it nodegenius/mailsystem:latest /bin/sh
-\`\`\`
+```
 
 ---
 
@@ -724,7 +724,7 @@ docker run --rm -it nodegenius/mailsystem:latest /bin/sh
 
 ### **Common Commands:**
 
-\`\`\`bash
+```
 # Check system status
 docker ps
 docker logs privatemaildelivery
@@ -741,7 +741,7 @@ docker exec -it privatemaildelivery /bin/sh
 
 # Check email processing
 docker logs privatemaildelivery | grep "Email saved"
-\`\`\`
+```
 
 ### **Support Resources:**
 - **Container Logs**: `docker logs privatemaildelivery`
