@@ -49,6 +49,21 @@ docker run -d \
   maildelivery:latest
 \`\`\`
 
+**Example with real domain:**
+\`\`\`bash
+docker run -d \
+  --restart=unless-stopped \
+  --name privatemaildelivery \
+  -e "DOMAINS=example.com,mail.example.com" \
+  -e "ADMIN_PASSWORD=MySecurePassword123!" \
+  -e "DELETE_OLDER_THAN_DAYS=3" \
+  -e "DISCARD_UNKNOWN=false" \
+  -p 4000:80 \
+  -p 25:25 \
+  -v /home/user/maildelivery-data:/var/www/opentrashmail/data \
+  maildelivery:latest
+\`\`\`
+
 ### Option 2: Docker Compose
 
 1. **Clone the repository:**
@@ -57,18 +72,66 @@ git clone <repository-url>
 cd maildelivery-system
 \`\`\`
 
-2. **Edit docker-compose.yml:**
+2. **Create/Edit docker-compose.yml:**
 \`\`\`yaml
-environment:
-  - DOMAINS=yourdomain.com,mail.yourdomain.com
-  - ADMIN_PASSWORD=your_secure_password_here
-  - DELETE_OLDER_THAN_DAYS=7
-  - DISCARD_UNKNOWN=false
+version: '3.8'
+
+services:
+  maildelivery:
+    build: .
+    container_name: privatemaildelivery
+    restart: unless-stopped
+    ports:
+      - "4000:80"    # Web Interface
+      - "25:25"      # SMTP
+    environment:
+      - DOMAINS=yourdomain.com,mail.yourdomain.com
+      - ADMIN_PASSWORD=your_secure_password_here
+      - DELETE_OLDER_THAN_DAYS=7
+      - DISCARD_UNKNOWN=false
+      - DATEFORMAT=DD/MM/YYYY HH:mm
+    volumes:
+      - ./data:/var/www/opentrashmail/data
+    networks:
+      - maildelivery-net
+
+networks:
+  maildelivery-net:
+    driver: bridge
 \`\`\`
 
 3. **Start the service:**
 \`\`\`bash
 docker-compose up -d
+\`\`\`
+
+### Docker Management Commands
+
+\`\`\`bash
+# View running containers
+docker ps
+
+# View logs
+docker logs privatemaildelivery
+docker logs -f privatemaildelivery  # Follow logs in real-time
+
+# Container management
+docker restart privatemaildelivery  # Restart
+docker stop privatemaildelivery     # Stop
+docker start privatemaildelivery    # Start
+docker rm privatemaildelivery       # Remove (when stopped)
+
+# Update container
+docker pull maildelivery:latest
+docker stop privatemaildelivery
+docker rm privatemaildelivery
+# Run the docker run command again with updated image
+
+# Access container shell (for debugging)
+docker exec -it privatemaildelivery /bin/sh
+
+# Check container resource usage
+docker stats privatemaildelivery
 \`\`\`
 
 ---
