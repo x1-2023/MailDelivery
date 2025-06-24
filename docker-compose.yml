@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  trashmail:
+    build: .
+    container_name: privatetrashmail
+    restart: unless-stopped
+    ports:
+      - "4000:80"
+      - "25:25"
+    environment:
+      - DOMAINS=0xf5.site,tempmail.local
+      - DATEFORMAT=D.M.YYYY HH:mm
+      - ADMIN_PASSWORD=your_secure_password_here
+      - DISCARD_UNKNOWN=false
+      - DELETE_OLDER_THAN_DAYS=1
+    volumes:
+      - ./data:/var/www/opentrashmail/data
+    networks:
+      - trashmail-network
+
+networks:
+  trashmail-network:
+    driver: bridge
