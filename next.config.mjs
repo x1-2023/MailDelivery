@@ -1,3 +1,5 @@
+import path from 'path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -10,13 +12,12 @@ const nextConfig = {
     unoptimized: true,
   },
   webpack: (config) => {
-    const path = require('path');
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      '@': path.resolve(__dirname),
+      '@': path.resolve(process.cwd()),
     };
     return config;
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;
