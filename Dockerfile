@@ -7,16 +7,16 @@ RUN apk add --no-cache sqlite
 WORKDIR /var/www/opentrashmail
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Enable corepack, prepare pnpm và cài dependencies production
+RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --prod
 
 # Copy app source
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN pnpm build
 
 # Create data directory
 RUN mkdir -p /var/www/opentrashmail/data
