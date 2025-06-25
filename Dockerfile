@@ -12,6 +12,9 @@ COPY package*.json ./
 # Install dependencies (include devDependencies for build)
 RUN npm ci
 
+# Install tsx globally for running TypeScript files
+RUN npm install -g tsx
+
 # Copy app source
 COPY . .
 
