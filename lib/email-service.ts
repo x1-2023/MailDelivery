@@ -39,7 +39,13 @@ export async function createTempEmail(tempEmail: TempEmail): Promise<TempEmail> 
 }
 
 export async function getEmailsForAddress(email: string): Promise<Email[]> {
-  const rows = await db.all("SELECT * FROM emails WHERE to_address = ? ORDER BY timestamp DESC", [email])
+  // Try exact match first
+  let rows = await db.all("SELECT * FROM emails WHERE to_address = ? ORDER BY timestamp DESC", [email])
+  
+  // If no results, try searching with LIKE for emails that contain the address
+  if (rows.length === 0) {
+    rows = await db.all("SELECT * FROM emails WHERE to_address LIKE ? ORDER BY timestamp DESC", [`%${email}%`])
+  }
 
   return rows.map((row) => ({
     id: row.id,
@@ -150,7 +156,8 @@ export async function deleteAllEmailsForAccount(email: string): Promise<number> 
 }
 
 export async function getEmailsForAddressWithAttachments(email: string): Promise<(Email & { attachments?: any[] })[]> {
-  const rows = await db.all(
+  // Try exact match first
+  let rows = await db.all(
     `
     SELECT e.*, 
            GROUP_CONCAT(a.id) as attachment_ids,
@@ -165,6 +172,25 @@ export async function getEmailsForAddressWithAttachments(email: string): Promise
   `,
     [email],
   )
+
+  // If no results, try searching with LIKE for emails that contain the address
+  if (rows.length === 0) {
+    rows = await db.all(
+      `
+      SELECT e.*, 
+             GROUP_CONCAT(a.id) as attachment_ids,
+             GROUP_CONCAT(a.filename) as attachment_filenames,
+             GROUP_CONCAT(a.mime_type) as attachment_mimes,
+             GROUP_CONCAT(a.size) as attachment_sizes
+      FROM emails e 
+      LEFT JOIN attachments a ON e.id = a.email_id 
+      WHERE e.to_address LIKE ? 
+      GROUP BY e.id 
+      ORDER BY e.timestamp DESC
+    `,
+      [`%${email}%`],
+    )
+  }
 
   return rows.map((row) => ({
     id: row.id,
