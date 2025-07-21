@@ -1,7 +1,7 @@
 FROM node:18-alpine
 
 # Install dependencies
-RUN apk add --no-cache sqlite
+RUN apk add --no-cache sqlite curl netcat-openbsd
 
 # Create app directory
 WORKDIR /var/www/opentrashmail
@@ -41,5 +41,13 @@ ENV ADMIN_PASSWORD=admin123
 # Start script
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
+
+# Health check script
+COPY healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD ["/healthcheck.sh"]
 
 CMD ["/start.sh"]
