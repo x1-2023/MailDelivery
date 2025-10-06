@@ -72,10 +72,6 @@ export class Database {
     await this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_emails_to_address ON emails(to_address);
       CREATE INDEX IF NOT EXISTS idx_emails_timestamp ON emails(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_emails_from_address ON emails(from_address);
-      CREATE INDEX IF NOT EXISTS idx_emails_subject ON emails(subject);
-      CREATE INDEX IF NOT EXISTS idx_emails_composite ON emails(to_address, timestamp DESC);
-      CREATE INDEX IF NOT EXISTS idx_emails_filter_composite ON emails(to_address, from_address, subject);
       CREATE INDEX IF NOT EXISTS idx_temp_emails_expires ON temp_emails(expires_at);
     `)
 

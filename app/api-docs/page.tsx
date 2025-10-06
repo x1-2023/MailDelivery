@@ -36,7 +36,7 @@ export default function APIDocumentation() {
         domain: "string - Email domain",
         expiresAt: "string - Expiration timestamp",
       },
-      example: `curl -X POST ${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/email/generate \\
+      example: `curl -X POST http://localhost:4000/api/email/generate \\
   -H "Content-Type: application/json" \\
   -d '{"customEmail": "myemail"}'`,
     },
@@ -53,7 +53,7 @@ export default function APIDocumentation() {
       response: {
         emails: "array - List of email objects",
       },
-      example: `curl -X GET "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/email/list?email=test@domain.com"`,
+      example: `curl -X GET "http://localhost:4000/api/email/list?email=test@domain.com"`,
     },
     {
       id: "delete-email",
@@ -68,7 +68,7 @@ export default function APIDocumentation() {
       response: {
         success: "boolean - Operation success status",
       },
-      example: `curl -X DELETE ${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/email/delete \\
+      example: `curl -X DELETE http://localhost:4000/api/email/delete \\
   -H "Content-Type: application/json" \\
   -d '{"id": "email-id-here"}'`,
     },
@@ -84,7 +84,7 @@ export default function APIDocumentation() {
         id: "string (required) - Email ID",
       },
       response: "Raw email content as text/plain",
-      example: `curl -X GET "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/raw/test@domain.com/email-id"`,
+      example: `curl -X GET "http://localhost:4000/api/raw/test@domain.com/email-id"`,
     },
     {
       id: "attachment",
@@ -98,7 +98,7 @@ export default function APIDocumentation() {
         "attachment-id": "string (required) - Attachment ID",
       },
       response: "Binary attachment data with proper mime type",
-      example: `curl -X GET "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/attachment/test@domain.com/attachment-id" -o attachment.pdf`,
+      example: `curl -X GET "http://localhost:4000/api/attachment/test@domain.com/attachment-id" -o attachment.pdf`,
     },
     {
       id: "delete-specific",
@@ -115,7 +115,7 @@ export default function APIDocumentation() {
         success: "boolean - Operation success",
         message: "string - Success message",
       },
-      example: `curl -X DELETE "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/delete/test@domain.com/email-id"`,
+      example: `curl -X DELETE "http://localhost:4000/api/delete/test@domain.com/email-id"`,
     },
     {
       id: "delete-account",
@@ -132,7 +132,7 @@ export default function APIDocumentation() {
         message: "string - Success message",
         deletedCount: "number - Number of deleted emails",
       },
-      example: `curl -X DELETE "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/deleteaccount/test@domain.com"`,
+      example: `curl -X DELETE "http://localhost:4000/api/deleteaccount/test@domain.com"`,
     },
     {
       id: "json-emails",
@@ -145,7 +145,7 @@ export default function APIDocumentation() {
         email: "string (required) - Email address",
       },
       response: "Array of email objects with attachments",
-      example: `curl -X GET "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/json/test@domain.com"`,
+      example: `curl -X GET "http://localhost:4000/json/test@domain.com"`,
     },
     {
       id: "json-specific",
@@ -159,7 +159,7 @@ export default function APIDocumentation() {
         id: "string (required) - Email ID",
       },
       response: "Email object with raw content and attachments",
-      example: `curl -X GET "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/json/test@domain.com/email-id"`,
+      example: `curl -X GET "http://localhost:4000/json/test@domain.com/email-id"`,
     },
     {
       id: "list-accounts",
@@ -172,31 +172,7 @@ export default function APIDocumentation() {
         SHOW_ACCOUNT_LIST: "string (required) - Set to 'true' to enable listing",
       },
       response: "Array of email addresses",
-      example: `curl -X GET "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/json/listaccounts?SHOW_ACCOUNT_LIST=true"`,
-    },
-    {
-      id: "catchme-check",
-      method: "POST",
-      path: "/api/catchme",
-      title: "Check Target Email",
-      description: "Check emails sent to catchme addresses with filtering options",
-      category: "Email Management",
-      requestBody: {
-        targetEmail: "string (required) - Target catchme email address (e.g., catchme@yourdomain.com)",
-        sender: "string (optional) - Filter by sender email address",
-        subject: "string (optional) - Filter by email subject",
-      },
-      response: {
-        success: "boolean - Operation success status",
-        targetEmail: "string - The target email that was checked",
-        count: "number - Number of emails found",
-        total: "number - Total number of matching emails",
-        hasMore: "boolean - Whether there are more emails available",
-        emails: "array - List of email objects sorted by newest first",
-      },
-      example: `curl -X POST ${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/catchme \\
-  -H "Content-Type: application/json" \\
-  -d '{"targetEmail": "catchme@yourdomain.com", "sender": "test@example.com"}'`,
+      example: `curl -X GET "http://localhost:4000/json/listaccounts?SHOW_ACCOUNT_LIST=true"`,
     },
   ]
 
@@ -292,9 +268,7 @@ export default function APIDocumentation() {
                   <CardContent className="space-y-4">
                     <div>
                       <h3 className="font-medium mb-2">Base URL</h3>
-                      <code className="bg-gray-100 px-2 py-1 rounded">
-                        {typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}
-                      </code>
+                      <code className="bg-gray-100 px-2 py-1 rounded">http://localhost:4000</code>
                     </div>
 
                     <div>
@@ -314,20 +288,6 @@ export default function APIDocumentation() {
                       <p className="text-gray-600">
                         No rate limiting is currently enforced, but please use the API responsibly.
                       </p>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium mb-2">Quick Start</h3>
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-sm text-blue-800 mb-2">Get started with these simple steps:</p>
-                        <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-                          <li>Generate a temporary email address</li>
-                          <li>Use the email for registrations or testing</li>
-                          <li>Check for incoming emails via API</li>
-                          <li>Download attachments if needed</li>
-                          <li>Clean up when done</li>
-                        </ol>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -377,20 +337,6 @@ export default function APIDocumentation() {
 }`}
                         </pre>
                       </div>
-
-                      <div>
-                        <h4 className="font-medium">Catchme Response Object</h4>
-                        <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-                          {`{
-  "success": "boolean",
-  "targetEmail": "string",
-  "count": "number",
-  "total": "number",
-  "hasMore": "boolean",
-  "emails": "Email[]"
-}`}
-                        </pre>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -399,14 +345,14 @@ export default function APIDocumentation() {
               <TabsContent value="endpoints" className="space-y-6">
                 {selectedEndpoint ? (
                   (() => {
-                    const endpoint = endpoints.find(e => e.id === selectedEndpoint)
-                    if (!endpoint) return <div>Endpoint not found</div>
-                    
+                    const endpoint = endpoints.find((e) => e.id === selectedEndpoint)
+                    if (!endpoint) return null
+
                     return (
                       <Card>
                         <CardHeader>
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
+                            <CardTitle className="flex items-center space-x-2">
                               <Badge
                                 variant={
                                   endpoint.method === "GET"
@@ -418,72 +364,68 @@ export default function APIDocumentation() {
                               >
                                 {endpoint.method}
                               </Badge>
-                              <code className="bg-gray-100 px-2 py-1 rounded text-sm">{endpoint.path}</code>
-                            </div>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => copyToClipboard(endpoint.example)}
-                            >
+                              <span>{endpoint.title}</span>
+                            </CardTitle>
+                            <Button variant="outline" size="sm" onClick={() => copyToClipboard(endpoint.example)}>
                               <Copy className="h-4 w-4 mr-2" />
-                              Copy cURL
+                              Copy
                             </Button>
                           </div>
-                          <CardTitle>{endpoint.title}</CardTitle>
                           <CardDescription>{endpoint.description}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                          <div>
+                            <h4 className="font-medium mb-2">Endpoint</h4>
+                            <code className="bg-gray-100 px-2 py-1 rounded">{endpoint.path}</code>
+                          </div>
+
                           {endpoint.parameters && (
                             <div>
                               <h4 className="font-medium mb-2">Parameters</h4>
                               <div className="space-y-2">
                                 {Object.entries(endpoint.parameters).map(([key, value]) => (
-                                  <div key={key} className="flex items-start space-x-2">
-                                    <code className="bg-blue-100 px-2 py-1 rounded text-sm font-mono">{key}</code>
+                                  <div key={key} className="flex">
+                                    <code className="bg-blue-100 px-2 py-1 rounded mr-2 text-sm">{key}</code>
                                     <span className="text-sm text-gray-600">{value}</span>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
-                          
+
                           {endpoint.requestBody && (
                             <div>
                               <h4 className="font-medium mb-2">Request Body</h4>
                               <div className="space-y-2">
                                 {Object.entries(endpoint.requestBody).map(([key, value]) => (
-                                  <div key={key} className="flex items-start space-x-2">
-                                    <code className="bg-green-100 px-2 py-1 rounded text-sm font-mono">{key}</code>
+                                  <div key={key} className="flex">
+                                    <code className="bg-green-100 px-2 py-1 rounded mr-2 text-sm">{key}</code>
                                     <span className="text-sm text-gray-600">{value}</span>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
-                          
-                          {endpoint.response && (
-                            <div>
-                              <h4 className="font-medium mb-2">Response</h4>
-                              <div className="space-y-2">
-                                {typeof endpoint.response === 'string' ? (
-                                  <div className="bg-purple-50 p-3 rounded border">
-                                    <span className="text-sm text-gray-700">{endpoint.response}</span>
-                                  </div>
-                                ) : (
-                                  Object.entries(endpoint.response).map(([key, value]) => (
-                                    <div key={key} className="flex items-start space-x-2">
-                                      <code className="bg-purple-100 px-2 py-1 rounded text-sm font-mono">{key}</code>
-                                      <span className="text-sm text-gray-600">{value}</span>
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          )}
-                          
+
                           <div>
-                            <h4 className="font-medium mb-2">Example Request</h4>
-                            <pre className="bg-gray-900 text-gray-100 p-4 rounded text-sm overflow-x-auto">
+                            <h4 className="font-medium mb-2">Response</h4>
+                            {typeof endpoint.response === "string" ? (
+                              <p className="text-sm text-gray-600">{endpoint.response}</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {Object.entries(endpoint.response).map(([key, value]) => (
+                                  <div key={key} className="flex">
+                                    <code className="bg-yellow-100 px-2 py-1 rounded mr-2 text-sm">{key}</code>
+                                    <span className="text-sm text-gray-600">{value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <h4 className="font-medium mb-2">Example</h4>
+                            <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
                               {endpoint.example}
                             </pre>
                           </div>
@@ -493,10 +435,10 @@ export default function APIDocumentation() {
                   })()
                 ) : (
                   <Card>
-                    <CardContent className="text-center py-8">
-                      <Code className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Endpoint</h3>
-                      <p className="text-gray-600">Choose an endpoint from the sidebar to view detailed documentation.</p>
+                    <CardContent className="p-8 text-center">
+                      <Code className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <h3 className="text-lg font-medium mb-2">Select an endpoint</h3>
+                      <p className="text-gray-600">Choose an endpoint from the sidebar to view its documentation</p>
                     </CardContent>
                   </Card>
                 )}
@@ -513,78 +455,54 @@ export default function APIDocumentation() {
                       <h4 className="font-medium mb-2">1. Create and Monitor Email</h4>
                       <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
                         {`# Create a new temporary email
-curl -X POST ${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/email/generate \\
+curl -X POST http://localhost:4000/api/email/generate \\
   -H "Content-Type: application/json" \\
-  -d '{"customEmail": "mytest"}'
+  -d '{}'
 
-# Response: {"email":"mytest@yourdomain.com","domain":"yourdomain.com","expiresAt":"..."}
+# Response: {"email":"abc123@domain.com","domain":"domain.com","expiresAt":"..."}
 
 # Check for new emails every 10 seconds
 while true; do
-  curl -s "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/email/list?email=mytest@yourdomain.com" | jq .
+  curl -s "http://localhost:4000/api/email/list?email=abc123@domain.com" | jq .
   sleep 10
 done`}
                       </pre>
                     </div>
 
                     <div>
-                      <h4 className="font-medium mb-2">2. Using Catchme API for Testing</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`# Check emails sent to catchme address
-curl -X POST ${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/catchme \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "targetEmail": "catchme@yourdomain.com",
-    "sender": "test@example.com",
-    "subject": "Test Email"
-  }'
-
-# Response: {
-#   "success": true,
-#   "targetEmail": "catchme@yourdomain.com",
-#   "count": 2,
-#   "total": 2,
-#   "hasMore": false,
-#   "emails": [...]
-# }`}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">3. Download Email with Attachments</h4>
+                      <h4 className="font-medium mb-2">2. Download Email with Attachments</h4>
                       <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
                         {`# Get email list
-EMAILS=$(curl -s "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/json/test@yourdomain.com")
+EMAILS=$(curl -s "http://localhost:4000/json/test@domain.com")
 
 # Extract email ID and attachment IDs
 EMAIL_ID=$(echo $EMAILS | jq -r '.[0].id')
 ATTACHMENT_ID=$(echo $EMAILS | jq -r '.[0].attachments[0].id')
 
 # Download raw email
-curl "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/raw/test@yourdomain.com/$EMAIL_ID" -o email.eml
+curl "http://localhost:4000/api/raw/test@domain.com/$EMAIL_ID" -o email.eml
 
 # Download attachment
-curl "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/attachment/test@yourdomain.com/$ATTACHMENT_ID" -o attachment.pdf`}
+curl "http://localhost:4000/api/attachment/test@domain.com/$ATTACHMENT_ID" -o attachment.pdf`}
                       </pre>
                     </div>
 
                     <div>
-                      <h4 className="font-medium mb-2">4. Cleanup Old Emails</h4>
+                      <h4 className="font-medium mb-2">3. Cleanup Old Emails</h4>
                       <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
                         {`# Delete specific email
-curl -X DELETE "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/delete/test@yourdomain.com/email-id"
+curl -X DELETE "http://localhost:4000/api/delete/test@domain.com/email-id"
 
 # Delete entire email account
-curl -X DELETE "${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/deleteaccount/test@yourdomain.com"`}
+curl -X DELETE "http://localhost:4000/api/deleteaccount/test@domain.com"`}
                       </pre>
                     </div>
 
                     <div>
-                      <h4 className="font-medium mb-2">5. JavaScript/Node.js Example</h4>
+                      <h4 className="font-medium mb-2">4. JavaScript/Node.js Example</h4>
                       <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
                         {`// Create temporary email
-const baseUrl = '${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}';
-const response = await fetch(\`\${baseUrl}/api/email/generate\`, {
+const response = await fetch('http://localhost:4000/api/email/generate', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ customEmail: 'mytest' })
@@ -593,60 +511,16 @@ const { email } = await response.json();
 
 // Poll for emails
 const checkEmails = async () => {
-  const response = await fetch(\`\${baseUrl}/api/email/list?email=\${email}\`);
+  const response = await fetch(\`http://localhost:4000/api/email/list?email=\${email}\`);
   const { emails } = await response.json();
   return emails;
-};
-
-// Check catchme emails
-const checkCatchmeEmails = async () => {
-  const response = await fetch(\`\${baseUrl}/api/catchme\`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      targetEmail: 'catchme@yourdomain.com',
-      sender: 'test@example.com'
-    })
-  });
-  const result = await response.json();
-  return result.emails;
 };
 
 // Check every 5 seconds
 setInterval(async () => {
   const emails = await checkEmails();
-  const catchmeEmails = await checkCatchmeEmails();
-  console.log(\`Regular: \${emails.length}, Catchme: \${catchmeEmails.length} emails\`);
+  console.log(\`Received \${emails.length} emails\`);
 }, 5000);`}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">6. Python Example</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`import requests
-import time
-import json
-
-# Base URL - change this to your domain
-BASE_URL = '${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}'
-
-# Create temporary email
-response = requests.post(f'{BASE_URL}/api/email/generate', 
-                        json={'customEmail': 'pytest'})
-email_data = response.json()
-print(f"Created email: {email_data['email']}")
-
-# Check for emails
-def check_emails(email):
-    response = requests.get(f'{BASE_URL}/api/email/list?email={email}')
-    return response.json().get('emails', [])
-
-# Monitor emails
-while True:
-    emails = check_emails(email_data['email'])
-    print(f"Found {len(emails)} emails")
-    time.sleep(10)`}
                       </pre>
                     </div>
                   </CardContent>
@@ -668,16 +542,16 @@ while True:
                       <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
                         {`docker run -d \\
   --restart=unless-stopped \\
-  --name mailsystem \\
+  --name privatetrashmail \\
   -e "DOMAINS=yourdomain.com,anotherdomain.com" \\
-  -e "DATEFORMAT=D.M.YYYY HH:mm" \\
+  -e "DATEFORMAT='D.M.YYYY HH:mm'" \\
   -e "ADMIN_PASSWORD=your_secure_password_here" \\
   -e "DISCARD_UNKNOWN=false" \\
-  -e "DELETE_OLDER_THAN_DAYS=7" \\
-  -p 3000:3000 \\
+  -e "DELETE_OLDER_THAN_DAYS=1" \\
+  -p 4000:80 \\
   -p 25:25 \\
-  -v /path/to/data:/app/data \\
-  mailsystem:latest`}
+  -v /path/to/data:/var/www/opentrashmail/data \\
+  maildelivery:latest`}
                       </pre>
                     </div>
 
@@ -715,22 +589,20 @@ while True:
                         {`version: '3.8'
 
 services:
-  mailsystem:
+  maildelivery:
     build: .
-    container_name: mailsystem
+    container_name: privatemaildelivery
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "4000:80"
       - "25:25"
     environment:
-      - DOMAINS=yourdomain.com,0xf5.site
+      - DOMAINS=yourdomain.com
       - ADMIN_PASSWORD=your_secure_password_here
-      - DELETE_OLDER_THAN_DAYS=7
+      - DELETE_OLDER_THAN_DAYS=1
       - DISCARD_UNKNOWN=false
-      - NODE_ENV=production
     volumes:
-      - ./data:/app/data
-      - ./.env:/app/.env`}
+      - ./data:/var/www/opentrashmail/data`}
                       </pre>
                     </div>
 
@@ -738,7 +610,7 @@ services:
                       <h4 className="font-medium mb-2">Port Configuration</h4>
                       <div className="space-y-2">
                         <div className="flex">
-                          <code className="bg-green-100 px-2 py-1 rounded mr-2 text-sm">3000</code>
+                          <code className="bg-green-100 px-2 py-1 rounded mr-2 text-sm">80</code>
                           <span className="text-sm text-gray-600">Web interface and API</span>
                         </div>
                         <div className="flex">
