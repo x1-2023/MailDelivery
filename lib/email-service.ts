@@ -268,3 +268,73 @@ export async function getAllEmailAccounts(): Promise<string[]> {
   const rows = await db.all("SELECT DISTINCT to_address FROM emails ORDER BY to_address")
   return rows.map((row) => row.to_address)
 }
+
+export interface EmailFilters {
+  email: string
+  subject?: string
+  sender?: string
+  recipient?: string
+  limit?: number
+  offset?: number
+}
+
+export interface FilteredEmailsResult {
+  emails: Email[]
+  total: number
+  hasMore: boolean
+}
+
+export async function getFilteredEmails(filters: EmailFilters): Promise<FilteredEmailsResult> {
+  const { email, subject, sender, recipient, limit = 50, offset = 0 } = filters
+  
+  let whereConditions = ["to_address LIKE ?"]
+  let params: any[] = [`%${email}%`]
+  
+  if (subject) {
+    whereConditions.push("subject LIKE ?")
+    params.push(`%${subject}%`)
+  }
+  
+  if (sender) {
+    whereConditions.push("from_address LIKE ?")
+    params.push(`%${sender}%`)
+  }
+  
+  if (recipient) {
+    whereConditions.push("to_address LIKE ?")
+    params.push(`%${recipient}%`)
+  }
+  
+  const whereClause = whereConditions.join(" AND ")
+  
+  const countQuery = `SELECT COUNT(*) as total FROM emails WHERE ${whereClause}`
+  const countResult = await db.get(countQuery, params)
+  const total = countResult.total
+  
+  const dataQuery = `
+    SELECT * FROM emails 
+    WHERE ${whereClause} 
+    ORDER BY timestamp DESC 
+    LIMIT ? OFFSET ?
+  `
+  
+  const rows = await db.all(dataQuery, [...params, limit, offset])
+  
+  const emails = rows.map((row) => ({
+    id: row.id,
+    from: row.from_address,
+    to: row.to_address,
+    subject: row.subject,
+    body: row.body,
+    html: row.html,
+    timestamp: row.timestamp,
+    read: Boolean(row.read),
+    starred: Boolean(row.starred),
+  }))
+  
+  return {
+    emails,
+    total,
+    hasMore: offset + limit < total
+  }
+}
