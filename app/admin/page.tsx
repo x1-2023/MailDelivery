@@ -65,11 +65,36 @@ export default function AdminPanel() {
 
   // Check if already authenticated
   useEffect(() => {
-    const authToken = localStorage.getItem("admin_auth")
-    if (authToken === "authenticated") {
-      setIsAuthenticated(true)
-      loadAdminData()
+    const checkAuth = async () => {
+      // First check if there's a valid session cookie
+      try {
+        const response = await fetch("/api/auth/session", {
+          credentials: "include",
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.authenticated && data.user?.role === "admin") {
+            setIsAuthenticated(true)
+            localStorage.setItem("admin_auth", "authenticated")
+            localStorage.setItem("admin_username", data.user.username)
+            loadAdminData()
+            return
+          }
+        }
+      } catch (error) {
+        console.error("Session check failed:", error)
+      }
+
+      // Fallback to localStorage check
+      const authToken = localStorage.getItem("admin_auth")
+      if (authToken === "authenticated") {
+        setIsAuthenticated(true)
+        loadAdminData()
+      }
     }
+
+    checkAuth()
 
     // Check dark mode preference
     const isDark = localStorage.getItem("darkMode") === "true" ||

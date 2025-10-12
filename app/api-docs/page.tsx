@@ -270,20 +270,20 @@ export default function ApiDocsPage() {
                   <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
                     <code className="text-sm">{`# Chỉ cần: Authorization: username:password
 curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
-  -H "Authorization: admin:yourpassword"
+  -H "Authorization: myuser:mypassword"
 
-# Ví dụ thực tế:
+# Ví dụ với generate email:
 curl ${baseUrl}/api/email/generate \\
   -X POST \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: admin:Deobiet1" \\
+  -H "Authorization: myuser:SecurePass123!" \\
   -d '{"customEmail":"test123"}'`}</code>
                   </pre>
                   <p className="text-sm text-green-700 dark:text-green-400 mt-2">
                     ✅ <strong>Ưu điểm:</strong> Không cần login trước, không cần base64 encode, không cần lấy token
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    💡 <strong>Note:</strong> Nếu password có dấu ":" thì vẫn work bình thường (ví dụ: admin:pass:word:123)
+                    💡 <strong>Note:</strong> Nếu password có dấu ":" thì vẫn work bình thường (ví dụ: user:pass:word:123)
                   </p>
                 </div>
               </TabsContent>
@@ -347,7 +347,7 @@ curl ${baseUrl}/api/email/generate \\
                     <code className="text-sm">{`curl ${baseUrl}/api/admin/auth \\
   -X POST \\
   -H "Content-Type: application/json" \\
-  -d '{"username":"admin","password":"yourpassword"}'
+  -d '{"username":"myuser","password":"SecurePass123!"}'
 
 # Response:
 # {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}`}</code>
@@ -375,11 +375,11 @@ curl ${baseUrl}/api/email/generate \\
                   <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
                     <code className="text-sm">{`# Dùng -u flag của curl (tự động encode):
 curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
-  -u admin:yourpassword
+  -u myuser:SecurePass123!
 
 # Hoặc manual encode base64:
 curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
-  -H "Authorization: Basic $(echo -n admin:yourpassword | base64)"`}</code>
+  -H "Authorization: Basic $(echo -n myuser:SecurePass123! | base64)"`}</code>
                   </pre>
                   <p className="text-sm text-muted-foreground mt-2">
                     ⚠️ <strong>Khuyến nghị:</strong> Dùng Simple Auth (đơn giản hơn) thay vì Basic Auth
