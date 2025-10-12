@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAdmin } from "@/lib/admin-service"
+import { requireAdmin } from "@/lib/auth-middleware"
 import { Database } from "@/lib/database"
 import bcrypt from "bcryptjs"
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validateSession } from "./auth-service"
-import { parseBasicAuth, parseBearerToken } from "./password"
+import { parseBasicAuth, parseBearerToken, parseSimpleAuth } from "./password"
 import { authenticateUser } from "./auth-service"
 
 export interface AuthenticatedRequest extends NextRequest {
@@ -13,7 +13,7 @@ export interface AuthenticatedRequest extends NextRequest {
 
 /**
  * Middleware to check authentication
- * Supports both Bearer token and Basic auth
+ * Supports Bearer token, Basic auth, and Simple auth (username:password)
  */
 export async function requireAuth(
   request: NextRequest,
@@ -38,6 +38,16 @@ export async function requireAuth(
   // Try Basic auth
   else if (authHeader?.startsWith("Basic ")) {
     const credentials = parseBasicAuth(authHeader)
+    if (credentials) {
+      const authResult = await authenticateUser(credentials.username, credentials.password)
+      if (authResult) {
+        user = authResult.user
+      }
+    }
+  }
+  // Try Simple auth (username:password)
+  else if (authHeader) {
+    const credentials = parseSimpleAuth(authHeader)
     if (credentials) {
       const authResult = await authenticateUser(credentials.username, credentials.password)
       if (authResult) {
@@ -106,6 +116,16 @@ export async function allowAnonymous(
   // Try Basic auth
   else if (authHeader?.startsWith("Basic ")) {
     const credentials = parseBasicAuth(authHeader)
+    if (credentials) {
+      const authResult = await authenticateUser(credentials.username, credentials.password)
+      if (authResult) {
+        user = authResult.user
+      }
+    }
+  }
+  // Try Simple auth (username:password)
+  else if (authHeader) {
+    const credentials = parseSimpleAuth(authHeader)
     if (credentials) {
       const authResult = await authenticateUser(credentials.username, credentials.password)
       if (authResult) {

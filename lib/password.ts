@@ -64,3 +64,31 @@ export function parseBearerToken(authHeader: string): string | null {
 
   return authHeader.slice(7)
 }
+
+/**
+ * Parse Simple Auth header (username:password format)
+ * Example: Authorization: admin:mypassword
+ */
+export function parseSimpleAuth(authHeader: string): { username: string; password: string } | null {
+  if (!authHeader) {
+    return null
+  }
+
+  // Skip if it's Bearer or Basic
+  if (authHeader.startsWith("Bearer ") || authHeader.startsWith("Basic ")) {
+    return null
+  }
+
+  try {
+    const [username, ...passwordParts] = authHeader.split(":")
+    const password = passwordParts.join(":") // In case password contains ":"
+
+    if (!username || !password) {
+      return null
+    }
+
+    return { username, password }
+  } catch {
+    return null
+  }
+}

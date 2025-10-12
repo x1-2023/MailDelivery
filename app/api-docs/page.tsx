@@ -234,25 +234,59 @@ export default function ApiDocsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="anonymous" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="anonymous">
-                  <Unlock className="h-4 w-4 mr-2" />
-                  Anonymous
-                </TabsTrigger>
-                <TabsTrigger value="session">
-                  <Lock className="h-4 w-4 mr-2" />
-                  Session
+            <Tabs defaultValue="simple" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="simple">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Simple
                 </TabsTrigger>
                 <TabsTrigger value="bearer">
                   <Shield className="h-4 w-4 mr-2" />
                   Bearer
                 </TabsTrigger>
+                <TabsTrigger value="session">
+                  <Lock className="h-4 w-4 mr-2" />
+                  Session
+                </TabsTrigger>
                 <TabsTrigger value="basic">
                   <User className="h-4 w-4 mr-2" />
                   Basic
                 </TabsTrigger>
+                <TabsTrigger value="anonymous">
+                  <Unlock className="h-4 w-4 mr-2" />
+                  Anonymous
+                </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="simple" className="space-y-4">
+                <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                  <Zap className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <strong>Recommended!</strong> Simplest authentication method - just put username:password in Authorization header.
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Usage (Đơn giản nhất)</h4>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                    <code className="text-sm">{`# Chỉ cần: Authorization: username:password
+curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
+  -H "Authorization: admin:yourpassword"
+
+# Ví dụ thực tế:
+curl ${baseUrl}/api/email/generate \\
+  -X POST \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: admin:Deobiet1" \\
+  -d '{"customEmail":"test123"}'`}</code>
+                  </pre>
+                  <p className="text-sm text-green-700 dark:text-green-400 mt-2">
+                    ✅ <strong>Ưu điểm:</strong> Không cần login trước, không cần base64 encode, không cần lấy token
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    💡 <strong>Note:</strong> Nếu password có dấu ":" thì vẫn work bình thường (ví dụ: admin:pass:word:123)
+                  </p>
+                </div>
+              </TabsContent>
 
               <TabsContent value="anonymous" className="space-y-4">
                 <Alert>
@@ -304,7 +338,7 @@ curl ${baseUrl}/api/email/generate \\
                 <Alert>
                   <Shield className="h-4 w-4" />
                   <AlertDescription>
-                    Token-based authentication (recommended for API integrations).
+                    Token-based authentication (for applications that need session management).
                   </AlertDescription>
                 </Alert>
                 <div className="space-y-2">
@@ -313,7 +347,7 @@ curl ${baseUrl}/api/email/generate \\
                     <code className="text-sm">{`curl ${baseUrl}/api/admin/auth \\
   -X POST \\
   -H "Content-Type: application/json" \\
-  -d '{"username":"user","password":"password"}'
+  -d '{"username":"admin","password":"yourpassword"}'
 
 # Response:
 # {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}`}</code>
@@ -323,6 +357,9 @@ curl ${baseUrl}/api/email/generate \\
                     <code className="text-sm">{`curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
   -H "Authorization: Bearer YOUR_TOKEN_HERE"`}</code>
                   </pre>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    💡 <strong>Khi nào dùng:</strong> Khi bạn muốn lưu token và dùng nhiều lần mà không cần gửi password
+                  </p>
                 </div>
               </TabsContent>
 
@@ -330,19 +367,23 @@ curl ${baseUrl}/api/email/generate \\
                 <Alert>
                   <User className="h-4 w-4" />
                   <AlertDescription>
-                    HTTP Basic Authentication (legacy support).
+                    HTTP Basic Authentication (legacy support, cần base64 encode).
                   </AlertDescription>
                 </Alert>
                 <div className="space-y-2">
                   <h4 className="font-semibold">Usage</h4>
                   <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
-                    <code className="text-sm">{`curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
-  -u username:password
-
-# Or with explicit header:
+                    <code className="text-sm">{`# Dùng -u flag của curl (tự động encode):
 curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
-  -H "Authorization: Basic $(echo -n username:password | base64)"`}</code>
+  -u admin:yourpassword
+
+# Hoặc manual encode base64:
+curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
+  -H "Authorization: Basic $(echo -n admin:yourpassword | base64)"`}</code>
                   </pre>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    ⚠️ <strong>Khuyến nghị:</strong> Dùng Simple Auth (đơn giản hơn) thay vì Basic Auth
+                  </p>
                 </div>
               </TabsContent>
             </Tabs>
