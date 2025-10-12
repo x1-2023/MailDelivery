@@ -2,7 +2,29 @@ import { Database } from "./database"
 import fs from "fs"
 import path from "path"
 
-const db = new Database()
+// Lazy initialization - only create database when actually needed (not during build)
+let db: Database | null = null
+let dbInitPromise: Promise<Database> | null = null
+
+async function getDb(): Promise<Database> {
+  // Skip database initialization during build time
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    throw new Error('Database not available during build')
+  }
+  
+  if (db) return db
+  
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      const instance = new Database()
+      await instance.init()
+      db = instance
+      return instance
+    })()
+  }
+  
+  return dbInitPromise
+}
 
 export interface AdminStats {
   totalEmails: number
@@ -30,18 +52,20 @@ export interface SystemConfig {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
+  const database = await getDb()
+  
   // Total emails
-  const totalEmailsResult = await db.get("SELECT COUNT(*) as count FROM emails")
+  const totalEmailsResult = await database.get("SELECT COUNT(*) as count FROM emails")
   const totalEmails = totalEmailsResult?.count || 0
 
   // Total accounts
-  const totalAccountsResult = await db.get("SELECT COUNT(DISTINCT to_address) as count FROM emails")
+  const totalAccountsResult = await database.get("SELECT COUNT(DISTINCT to_address) as count FROM emails")
   const totalAccounts = totalAccountsResult?.count || 0
 
   // Emails today
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const emailsTodayResult = await db.get("SELECT COUNT(*) as count FROM emails WHERE timestamp >= ?", [
+  const emailsTodayResult = await database.get("SELECT COUNT(*) as count FROM emails WHERE timestamp >= ?", [
     today.toISOString(),
   ])
   const emailsToday = emailsTodayResult?.count || 0
@@ -49,7 +73,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   // Emails this week
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
-  const emailsThisWeekResult = await db.get("SELECT COUNT(*) as count FROM emails WHERE timestamp >= ?", [
+  const emailsThisWeekResult = await database.get("SELECT COUNT(*) as count FROM emails WHERE timestamp >= ?", [
     weekAgo.toISOString(),
   ])
   const emailsThisWeek = emailsThisWeekResult?.count || 0
@@ -58,8 +82,8 @@ export async function getAdminStats(): Promise<AdminStats> {
   const storageUsed = await calculateStorageUsed()
 
   // Oldest and newest emails
-  const oldestEmailResult = await db.get("SELECT timestamp FROM emails ORDER BY timestamp ASC LIMIT 1")
-  const newestEmailResult = await db.get("SELECT timestamp FROM emails ORDER BY timestamp DESC LIMIT 1")
+  const oldestEmailResult = await database.get("SELECT timestamp FROM emails ORDER BY timestamp ASC LIMIT 1")
+  const newestEmailResult = await database.get("SELECT timestamp FROM emails ORDER BY timestamp DESC LIMIT 1")
 
   return {
     totalEmails,
@@ -73,7 +97,8 @@ export async function getAdminStats(): Promise<AdminStats> {
 }
 
 export async function getAllEmailAccountsWithStats(): Promise<EmailAccount[]> {
-  const accounts = await db.all(`
+  const database = await getDb()
+  const accounts = await database.all(`
     SELECT 
       to_address as email,
       COUNT(*) as emailCount,
@@ -113,18 +138,19 @@ export async function updateSystemConfig(updates: Partial<SystemConfig>): Promis
 }
 
 export async function runManualCleanup(): Promise<{ deletedCount: number }> {
+  const database = await getDb()
   const deleteOlderThanDays = Number.parseInt(process.env.DELETE_OLDER_THAN_DAYS || "1")
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - deleteOlderThanDays)
 
   // Delete old emails
-  const result = await db.run("DELETE FROM emails WHERE timestamp < ?", [cutoffDate.toISOString()])
+  const result = await database.run("DELETE FROM emails WHERE timestamp < ?", [cutoffDate.toISOString()])
 
   // Delete expired temp emails
-  await db.run("DELETE FROM temp_emails WHERE expires_at < ?", [new Date().toISOString()])
+  await database.run("DELETE FROM temp_emails WHERE expires_at < ?", [new Date().toISOString()])
 
   // Delete orphaned attachments
-  await db.run(`
+  await database.run(`
     DELETE FROM attachments 
     WHERE email_id NOT IN (SELECT id FROM emails)
   `)
@@ -157,6 +183,7 @@ function formatBytes(bytes: number): string {
 // Admin authentication middleware
 export async function requireAdmin(request: Request): Promise<{ user?: any; error?: Response }> {
   const { NextResponse } = await import("next/server")
+  const database = await getDb()
   
   try {
     // Get session token from cookies
@@ -189,7 +216,7 @@ export async function requireAdmin(request: Request): Promise<{ user?: any; erro
     }
 
     // Verify session and get user
-    const session = await db.get(
+    const session = await database.get(
       "SELECT * FROM sessions WHERE token = ? AND expires_at > datetime('now')",
       [sessionToken]
     )
@@ -204,7 +231,7 @@ export async function requireAdmin(request: Request): Promise<{ user?: any; erro
     }
 
     // Get user
-    const user = await db.get("SELECT * FROM users WHERE id = ?", [session.user_id])
+    const user = await database.get("SELECT * FROM users WHERE id = ?", [session.user_id])
 
     if (!user) {
       return {
