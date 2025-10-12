@@ -1,6 +1,7 @@
 import sqlite3 from "sqlite3"
 import { open, type Database as SqliteDatabase } from "sqlite"
 import path from "path"
+import fs from "fs"
 
 export class Database {
   private db: SqliteDatabase | null = null
@@ -12,6 +13,12 @@ export class Database {
       process.env.NODE_ENV === "production"
         ? "/var/www/opentrashmail/data/emails.db"
         : path.join(process.cwd(), "data", "emails.db")
+
+    // Ensure data directory exists
+    const dataDir = path.dirname(dbPath)
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true })
+    }
 
     this.db = await open({
       filename: dbPath,

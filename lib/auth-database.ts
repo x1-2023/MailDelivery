@@ -1,7 +1,15 @@
 import Database from "better-sqlite3"
 import path from "path"
+import fs from "fs"
 
 const dbPath = path.join(process.cwd(), "data", "emails.db")
+
+// Ensure data directory exists before creating database
+const dataDir = path.dirname(dbPath)
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true })
+}
+
 export const authDb = new Database(dbPath)
 
 // Initialize auth tables
