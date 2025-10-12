@@ -14,6 +14,11 @@ function cleanupExpiredEmails() {
 
     const db = new Database(dbPath)
     
+    // Enable WAL mode for better concurrent access
+    db.pragma("journal_mode = WAL")
+    // Set busy timeout to 5 seconds
+    db.pragma("busy_timeout = 5000")
+    
     // Get DELETE_OLDER_THAN_DAYS from env or default to 1 day
     const daysToKeep = parseInt(process.env.DELETE_OLDER_THAN_DAYS || "1", 10)
     

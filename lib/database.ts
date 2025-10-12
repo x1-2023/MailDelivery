@@ -25,6 +25,11 @@ export class Database {
       driver: sqlite3.Database,
     })
 
+    // Enable WAL mode for better concurrent access
+    await this.db.exec("PRAGMA journal_mode = WAL;")
+    // Set busy timeout to 5 seconds
+    await this.db.exec("PRAGMA busy_timeout = 5000;")
+
     // Create tables
     await this.db.exec(`
       CREATE TABLE IF NOT EXISTS temp_emails (

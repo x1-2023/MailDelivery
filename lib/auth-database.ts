@@ -12,6 +12,11 @@ if (!fs.existsSync(dataDir)) {
 
 export const authDb = new Database(dbPath)
 
+// Enable WAL mode for better concurrent access
+authDb.pragma("journal_mode = WAL")
+// Set busy timeout to 5 seconds
+authDb.pragma("busy_timeout = 5000")
+
 // Initialize auth tables
 export function initializeAuthTables() {
   authDb.exec(`

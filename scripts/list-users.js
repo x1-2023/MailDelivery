@@ -12,6 +12,11 @@ try {
   }
 
   const db = new Database(dbPath)
+  
+  // Enable WAL mode for better concurrent access
+  db.pragma("journal_mode = WAL")
+  // Set busy timeout to 5 seconds
+  db.pragma("busy_timeout = 5000")
 
   // List all users
   const users = db.prepare(`

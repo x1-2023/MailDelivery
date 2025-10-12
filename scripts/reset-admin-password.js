@@ -19,7 +19,7 @@ try {
     fs.mkdirSync(dataDir, { recursive: true })
   }
 
-  const dbPath = path.join(dataDir, "auth.db")
+  const dbPath = path.join(dataDir, "emails.db")
   
   if (!fs.existsSync(dbPath)) {
     console.error("❌ Database file not found at:", dbPath)
@@ -28,6 +28,11 @@ try {
   }
 
   const db = new Database(dbPath)
+  
+  // Enable WAL mode for better concurrent access
+  db.pragma("journal_mode = WAL")
+  // Set busy timeout to 5 seconds
+  db.pragma("busy_timeout = 5000")
 
   // Check if user exists
   const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username)
