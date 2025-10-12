@@ -4,6 +4,7 @@ export interface TempEmail {
   email: string
   domain: string
   expiresAt: string
+  userId?: string
 }
 
 export interface Email {
@@ -16,6 +17,8 @@ export interface Email {
   timestamp: string
   read: boolean
   starred: boolean
+  spamFiltered?: number
+  autoDeleteAt?: string
 }
 
 const db = new Database()
@@ -30,11 +33,10 @@ export function generateRandomEmail(domain: string): string {
 }
 
 export async function createTempEmail(tempEmail: TempEmail): Promise<TempEmail> {
-  await db.run("INSERT OR REPLACE INTO temp_emails (email, domain, expires_at) VALUES (?, ?, ?)", [
-    tempEmail.email,
-    tempEmail.domain,
-    tempEmail.expiresAt,
-  ])
+  await db.run(
+    "INSERT OR REPLACE INTO temp_emails (email, domain, expires_at, user_id, is_anonymous) VALUES (?, ?, ?, ?, ?)",
+    [tempEmail.email, tempEmail.domain, tempEmail.expiresAt, tempEmail.userId || null, tempEmail.userId ? 0 : 1],
+  )
   return tempEmail
 }
 
@@ -63,9 +65,21 @@ export async function getEmailsForAddress(email: string): Promise<Email[]> {
 export async function saveIncomingEmail(email: Omit<Email, "id">): Promise<void> {
   const id = generateId()
   await db.run(
-    `INSERT INTO emails (id, from_address, to_address, subject, body, html, timestamp, read, starred) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, email.from, email.to, email.subject, email.body, email.html, email.timestamp, 0, 0],
+    `INSERT INTO emails (id, from_address, to_address, subject, body, html, timestamp, read, starred, spam_filtered, auto_delete_at) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      email.from,
+      email.to,
+      email.subject,
+      email.body,
+      email.html,
+      email.timestamp,
+      0,
+      0,
+      email.spamFiltered || 0,
+      email.autoDeleteAt || null,
+    ],
   )
 }
 

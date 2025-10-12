@@ -10,6 +10,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Users, Mail, Database, Trash2, Eye, BarChart3, Shield, HardDrive, Activity, AlertTriangle } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import UserManagement from "@/components/user-management"
+import SpamFiltersManager from "@/components/spam-filters-manager"
+import AdminManagement from "@/components/admin-management"
 
 interface AdminStats {
   totalEmails: number
@@ -38,6 +41,7 @@ interface SystemConfig {
 
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [username, setUsername] = useState("admin")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState<AdminStats | null>(null)
@@ -46,6 +50,7 @@ export default function AdminPanel() {
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [accountEmails, setAccountEmails] = useState<any[]>([])
   const [showEmailDialog, setShowEmailDialog] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
 
   // Check if already authenticated
   useEffect(() => {
@@ -54,6 +59,11 @@ export default function AdminPanel() {
       setIsAuthenticated(true)
       loadAdminData()
     }
+
+    // Check dark mode preference
+    const isDark = localStorage.getItem("darkMode") === "true" ||
+                   (!localStorage.getItem("darkMode") && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    setDarkMode(isDark)
   }, [])
 
   const handleLogin = async () => {
@@ -62,21 +72,25 @@ export default function AdminPanel() {
       const response = await fetch("/api/admin/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
       })
+
+      const data = await response.json()
 
       if (response.ok) {
         setIsAuthenticated(true)
         localStorage.setItem("admin_auth", "authenticated")
+        localStorage.setItem("admin_username", username)
         loadAdminData()
         toast({
           title: "Login successful",
-          description: "Welcome to admin panel",
+          description: `Welcome ${data.user.username}!`,
         })
       } else {
         toast({
           title: "Login failed",
-          description: "Invalid password",
+          description: data.error || data.message || "Invalid credentials",
           variant: "destructive",
         })
       }
@@ -100,17 +114,23 @@ export default function AdminPanel() {
   const loadAdminData = async () => {
     try {
       // Load stats
-      const statsResponse = await fetch("/api/admin/stats")
+      const statsResponse = await fetch("/api/admin/stats", {
+        credentials: "include",
+      })
       const statsData = await statsResponse.json()
       setStats(statsData)
 
       // Load accounts
-      const accountsResponse = await fetch("/api/admin/accounts")
+      const accountsResponse = await fetch("/api/admin/accounts", {
+        credentials: "include",
+      })
       const accountsData = await accountsResponse.json()
       setAccounts(accountsData)
 
       // Load config
-      const configResponse = await fetch("/api/admin/config")
+      const configResponse = await fetch("/api/admin/config", {
+        credentials: "include",
+      })
       const configData = await configResponse.json()
       setConfig(configData)
     } catch (error) {
@@ -123,6 +143,7 @@ export default function AdminPanel() {
       const response = await fetch("/api/admin/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(newConfig),
       })
 
@@ -148,6 +169,7 @@ export default function AdminPanel() {
     try {
       const response = await fetch(`/api/deleteaccount/${email}`, {
         method: "DELETE",
+        credentials: "include",
       })
 
       if (response.ok) {
@@ -168,7 +190,9 @@ export default function AdminPanel() {
 
   const viewAccountEmails = async (email: string) => {
     try {
-      const response = await fetch(`/api/json/${email}`)
+      const response = await fetch(`/api/json/${email}`, {
+        credentials: "include",
+      })
       const emails = await response.json()
       setAccountEmails(emails)
       setSelectedAccount(email)
@@ -186,6 +210,7 @@ export default function AdminPanel() {
     try {
       const response = await fetch("/api/admin/cleanup", {
         method: "POST",
+        credentials: "include",
       })
 
       if (response.ok) {
@@ -207,26 +232,51 @@ export default function AdminPanel() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <Card className="w-full max-w-md dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <Shield className="h-12 w-12 text-blue-600" />
             </div>
-            <CardTitle>Admin Login</CardTitle>
-            <CardDescription>Enter admin password to access the control panel</CardDescription>
+            <CardTitle className="dark:text-white">Admin Login</CardTitle>
+            <CardDescription className="dark:text-gray-400">
+              Enter password to access the admin control panel
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Admin password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleLogin()}
-            />
-            <Button onClick={handleLogin} disabled={loading} className="w-full">
-              {loading ? "Logging in..." : "Login"}
-            </Button>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              handleLogin()
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <Input
+                    type="text"
+                    placeholder="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    autoComplete="username"
+                    autoFocus
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <Input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700">
+                  {loading ? "Logging in..." : "Login"}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>
@@ -259,12 +309,23 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 dark:bg-gray-800">
+          <TabsList className="grid w-full grid-cols-7 dark:bg-gray-800">
             <TabsTrigger value="dashboard" className="dark:data-[state=active]:bg-gray-700">
               Dashboard
             </TabsTrigger>
+            <TabsTrigger value="users" className="dark:data-[state=active]:bg-gray-700">
+              Users
+            </TabsTrigger>
             <TabsTrigger value="emails" className="dark:data-[state=active]:bg-gray-700">
               Email Management
+            </TabsTrigger>
+            <TabsTrigger value="spam-filters" className="dark:data-[state=active]:bg-gray-700">
+              <Shield className="h-4 w-4 mr-2" />
+              Spam Filters
+            </TabsTrigger>
+            <TabsTrigger value="admins" className="dark:data-[state=active]:bg-gray-700">
+              <Shield className="h-4 w-4 mr-2" />
+              Admins
             </TabsTrigger>
             <TabsTrigger value="settings" className="dark:data-[state=active]:bg-gray-700">
               Settings
@@ -273,6 +334,18 @@ export default function AdminPanel() {
               Maintenance
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="users" className="space-y-6">
+            <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="spam-filters" className="space-y-6">
+            <SpamFiltersManager darkMode={darkMode} />
+          </TabsContent>
+
+          <TabsContent value="admins" className="space-y-6">
+            <AdminManagement darkMode={darkMode} />
+          </TabsContent>
 
           <TabsContent value="dashboard" className="space-y-6">
             {/* Stats Cards */}
@@ -414,6 +487,30 @@ export default function AdminPanel() {
                     ))}
                   </div>
                 </ScrollArea>
+              </CardContent>
+            </Card>
+
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 dark:text-white">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  Orphan Emails
+                </CardTitle>
+                <CardDescription className="dark:text-gray-400">
+                  Email addresses without owners (from old database before authentication system)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  This feature is integrated into User Management. Go to the "Users" tab, select a user, 
+                  click "Manage Emails", then use the textarea to assign orphan emails to that user.
+                </p>
+                <Button onClick={() => {
+                  document.querySelector('[value="users"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+                }} variant="outline" className="w-full">
+                  <Users className="h-4 w-4 mr-2" />
+                  Go to User Management
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

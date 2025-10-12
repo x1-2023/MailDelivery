@@ -1,631 +1,887 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Copy, Mail, Code, Database, Settings } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { 
+  Code, 
+  Copy, 
+  Check, 
+  Shield, 
+  Zap, 
+  Lock, 
+  Unlock,
+  Mail,
+  Plus,
+  List,
+  Eye,
+  Trash2,
+  Star,
+  User,
+  Crown,
+  AlertCircle,
+  ExternalLink,
+  ChevronDown,
+  ChevronRight,
+  Moon,
+  Sun
+} from "lucide-react"
+import Link from "next/link"
 
-export default function APIDocumentation() {
-  const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null)
+export default function ApiDocsPage() {
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    generate: true,
+    list: false,
+    read: false,
+    delete: false,
+    star: false,
+  })
+  const [darkMode, setDarkMode] = useState(false)
 
-  const copyToClipboard = (text: string) => {
+  useEffect(() => {
+    // Check localStorage and system preference for dark mode
+    const isDark = localStorage.getItem("darkMode") === "true" || 
+                   (!localStorage.getItem("darkMode") && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    setDarkMode(isDark)
+    if (isDark) {
+      document.documentElement.classList.add("dark")
+    }
+  }, [])
+
+  const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
-    toast({
-      title: "Copied!",
-      description: "Code copied to clipboard",
-    })
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const endpoints = [
-    {
-      id: "generate-email",
-      method: "POST",
-      path: "/api/email/generate",
-      title: "Generate Email",
-      description: "Create a new temporary email address",
-      category: "Email Management",
-      requestBody: {
-        customEmail: "string (optional) - Custom email address or username",
-      },
-      response: {
-        email: "string - Generated email address",
-        domain: "string - Email domain",
-        expiresAt: "string - Expiration timestamp",
-      },
-      example: `curl -X POST http://localhost:4000/api/email/generate \\
-  -H "Content-Type: application/json" \\
-  -d '{"customEmail": "myemail"}'`,
-    },
-    {
-      id: "list-emails",
-      method: "GET",
-      path: "/api/email/list",
-      title: "List Emails",
-      description: "Get all emails for a specific address",
-      category: "Email Management",
-      parameters: {
-        email: "string (required) - Email address to fetch emails for",
-      },
-      response: {
-        emails: "array - List of email objects",
-      },
-      example: `curl -X GET "http://localhost:4000/api/email/list?email=test@domain.com"`,
-    },
-    {
-      id: "delete-email",
-      method: "DELETE",
-      path: "/api/email/delete",
-      title: "Delete Email",
-      description: "Delete a specific email message",
-      category: "Email Management",
-      requestBody: {
-        id: "string (required) - Email ID to delete",
-      },
-      response: {
-        success: "boolean - Operation success status",
-      },
-      example: `curl -X DELETE http://localhost:4000/api/email/delete \\
-  -H "Content-Type: application/json" \\
-  -d '{"id": "email-id-here"}'`,
-    },
-    {
-      id: "raw-email",
-      method: "GET",
-      path: "/api/raw/[email]/[id]",
-      title: "Get Raw Email",
-      description: "Returns the raw email content (can be up to 20MB)",
-      category: "Email Content",
-      parameters: {
-        email: "string (required) - Email address",
-        id: "string (required) - Email ID",
-      },
-      response: "Raw email content as text/plain",
-      example: `curl -X GET "http://localhost:4000/api/raw/test@domain.com/email-id"`,
-    },
-    {
-      id: "attachment",
-      method: "GET",
-      path: "/api/attachment/[email]/[attachment-id]",
-      title: "Get Attachment",
-      description: "Returns email attachment with correct mime type",
-      category: "Email Content",
-      parameters: {
-        email: "string (required) - Email address",
-        "attachment-id": "string (required) - Attachment ID",
-      },
-      response: "Binary attachment data with proper mime type",
-      example: `curl -X GET "http://localhost:4000/api/attachment/test@domain.com/attachment-id" -o attachment.pdf`,
-    },
-    {
-      id: "delete-specific",
-      method: "DELETE",
-      path: "/api/delete/[email]/[id]",
-      title: "Delete Specific Email",
-      description: "Deletes a specific email message and attachments",
-      category: "Email Management",
-      parameters: {
-        email: "string (required) - Email address",
-        id: "string (required) - Email ID",
-      },
-      response: {
-        success: "boolean - Operation success",
-        message: "string - Success message",
-      },
-      example: `curl -X DELETE "http://localhost:4000/api/delete/test@domain.com/email-id"`,
-    },
-    {
-      id: "delete-account",
-      method: "DELETE",
-      path: "/api/deleteaccount/[email]",
-      title: "Delete Account",
-      description: "Deletes all messages and attachments for an email account",
-      category: "Email Management",
-      parameters: {
-        email: "string (required) - Email address",
-      },
-      response: {
-        success: "boolean - Operation success",
-        message: "string - Success message",
-        deletedCount: "number - Number of deleted emails",
-      },
-      example: `curl -X DELETE "http://localhost:4000/api/deleteaccount/test@domain.com"`,
-    },
-    {
-      id: "json-emails",
-      method: "GET",
-      path: "/json/[email]",
-      title: "Get Emails (JSON)",
-      description: "Returns array of emails with attachment links and parsed body",
-      category: "JSON API",
-      parameters: {
-        email: "string (required) - Email address",
-      },
-      response: "Array of email objects with attachments",
-      example: `curl -X GET "http://localhost:4000/json/test@domain.com"`,
-    },
-    {
-      id: "json-specific",
-      method: "GET",
-      path: "/json/[email]/[id]",
-      title: "Get Specific Email (JSON)",
-      description: "Returns specific email with raw and HTML body (can be huge)",
-      category: "JSON API",
-      parameters: {
-        email: "string (required) - Email address",
-        id: "string (required) - Email ID",
-      },
-      response: "Email object with raw content and attachments",
-      example: `curl -X GET "http://localhost:4000/json/test@domain.com/email-id"`,
-    },
-    {
-      id: "list-accounts",
-      method: "GET",
-      path: "/json/listaccounts",
-      title: "List All Accounts",
-      description: "Returns array of all email addresses that received emails",
-      category: "JSON API",
-      parameters: {
-        SHOW_ACCOUNT_LIST: "string (required) - Set to 'true' to enable listing",
-      },
-      response: "Array of email addresses",
-      example: `curl -X GET "http://localhost:4000/json/listaccounts?SHOW_ACCOUNT_LIST=true"`,
-    },
-  ]
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
 
-  const categories = [...new Set(endpoints.map((e) => e.category))]
+  const toggleDarkMode = () => {
+    const newMode = !darkMode
+    setDarkMode(newMode)
+    localStorage.setItem("darkMode", String(newMode))
+    if (newMode) {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+  }
+
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <style jsx global>{`
+        /* Enhanced borders for better visibility in light mode */
+        button[class*="outline"],
+        [class*="badge"][class*="outline"] {
+          border-width: 1.5px !important;
+          border-color: rgb(209 213 219) !important;
+        }
+        .dark button[class*="outline"],
+        .dark [class*="badge"][class*="outline"] {
+          border-color: rgb(75 85 99) !important;
+        }
+        
+        /* Tab triggers */
+        [role="tablist"] button[data-state="inactive"] {
+          border: 1.5px solid rgb(209 213 219);
+          background-color: rgb(249 250 251);
+        }
+        .dark [role="tablist"] button[data-state="inactive"] {
+          border-color: rgb(75 85 99);
+          background-color: rgb(31 41 55);
+        }
+        
+        /* Hover states */
+        button[class*="outline"]:hover {
+          background-color: rgb(243 244 246);
+        }
+        .dark button[class*="outline"]:hover {
+          background-color: rgb(31 41 55);
+        }
+      `}</style>
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center space-x-3">
-            <Mail className="h-8 w-8 text-blue-600" />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">MailDelivery API Documentation</h1>
-              <p className="text-gray-600">Complete API reference for temporary email service</p>
+      <header className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <Code className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">API Documentation</h1>
+                <p className="text-sm text-muted-foreground">RESTful API for temporary email service</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleDarkMode}
+                className="border-gray-300 dark:border-gray-600"
+              >
+                {darkMode ? (
+                  <>
+                    <Sun className="h-4 w-4 mr-2" />
+                    Light
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-4 w-4 mr-2" />
+                    Dark
+                  </>
+                )}
+              </Button>
+              <Link href="/">
+                <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Back to App
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">API Endpoints</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-96">
-                  <div className="space-y-4">
-                    {categories.map((category) => (
-                      <div key={category}>
-                        <h3 className="font-medium text-sm text-gray-700 mb-2">{category}</h3>
-                        <div className="space-y-1">
-                          {endpoints
-                            .filter((e) => e.category === category)
-                            .map((endpoint) => (
-                              <button
-                                key={endpoint.id}
-                                onClick={() => setSelectedEndpoint(endpoint.id)}
-                                className={`w-full text-left p-2 rounded text-sm hover:bg-gray-100 ${
-                                  selectedEndpoint === endpoint.id ? "bg-blue-50 border-l-2 border-blue-500" : ""
-                                }`}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <Badge
-                                    variant={
-                                      endpoint.method === "GET"
-                                        ? "secondary"
-                                        : endpoint.method === "POST"
-                                          ? "default"
-                                          : "destructive"
-                                    }
-                                    className="text-xs"
-                                  >
-                                    {endpoint.method}
-                                  </Badge>
-                                  <span className="truncate">{endpoint.title}</span>
-                                </div>
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-                    ))}
+        {/* Overview */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-600" />
+              Quick Start
+            </CardTitle>
+            <CardDescription>
+              Get started with our API in minutes. No registration required for basic usage.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Unlock className="h-5 w-5 text-green-600" />
+                    <h3 className="font-semibold">Anonymous Mode</h3>
                   </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
+                  <p className="text-sm text-muted-foreground">
+                    Use API without authentication. Perfect for testing and public access.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-semibold">Authenticated</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Login to claim emails, sync across devices, and manage multiple addresses.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Crown className="h-5 w-5 text-purple-600" />
+                    <h3 className="font-semibold">Admin Access</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Full control over all emails, users, and system configuration.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            <Tabs defaultValue="overview">
+            <Separator />
+
+            <div>
+              <h3 className="font-semibold mb-2">Base URL</h3>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg font-mono text-sm">
+                  {baseUrl}/api
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(`${baseUrl}/api`, "base-url")}
+                  className="border-gray-300 dark:border-gray-600"
+                >
+                  {copiedId === "base-url" ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Authentication Methods */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600" />
+              Authentication Methods
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="anonymous" className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
-                <TabsTrigger value="examples">Examples</TabsTrigger>
-                <TabsTrigger value="docker">Docker</TabsTrigger>
+                <TabsTrigger value="anonymous">
+                  <Unlock className="h-4 w-4 mr-2" />
+                  Anonymous
+                </TabsTrigger>
+                <TabsTrigger value="session">
+                  <Lock className="h-4 w-4 mr-2" />
+                  Session
+                </TabsTrigger>
+                <TabsTrigger value="bearer">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Bearer
+                </TabsTrigger>
+                <TabsTrigger value="basic">
+                  <User className="h-4 w-4 mr-2" />
+                  Basic
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="overview" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Code className="h-5 w-5" />
-                      <span>API Overview</span>
-                    </CardTitle>
-                    <CardDescription>
-                      MailDelivery provides a RESTful API for managing temporary email addresses and messages.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h3 className="font-medium mb-2">Base URL</h3>
-                      <code className="bg-gray-100 px-2 py-1 rounded">http://localhost:4000</code>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium mb-2">Authentication</h3>
-                      <p className="text-gray-600">
-                        No authentication required. All endpoints are publicly accessible.
-                      </p>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium mb-2">Response Format</h3>
-                      <p className="text-gray-600">All responses are in JSON format unless specified otherwise.</p>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium mb-2">Rate Limiting</h3>
-                      <p className="text-gray-600">
-                        No rate limiting is currently enforced, but please use the API responsibly.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Database className="h-5 w-5" />
-                      <span>Data Models</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-medium">Email Object</h4>
-                        <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-                          {`{
-  "id": "string",
-  "from": "string",
-  "to": "string", 
-  "subject": "string",
-  "body": "string",
-  "html": "string",
-  "timestamp": "string",
-  "read": "boolean",
-  "starred": "boolean",
-  "attachments": [
-    {
-      "id": "string",
-      "filename": "string",
-      "mimeType": "string",
-      "size": "number",
-      "url": "string"
-    }
-  ]
-}`}
-                        </pre>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium">Temporary Email Object</h4>
-                        <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-                          {`{
-  "email": "string",
-  "domain": "string",
-  "expiresAt": "string"
-}`}
-                        </pre>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="endpoints" className="space-y-6">
-                {selectedEndpoint ? (
-                  (() => {
-                    const endpoint = endpoints.find((e) => e.id === selectedEndpoint)
-                    if (!endpoint) return null
-
-                    return (
-                      <Card>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="flex items-center space-x-2">
-                              <Badge
-                                variant={
-                                  endpoint.method === "GET"
-                                    ? "secondary"
-                                    : endpoint.method === "POST"
-                                      ? "default"
-                                      : "destructive"
-                                }
-                              >
-                                {endpoint.method}
-                              </Badge>
-                              <span>{endpoint.title}</span>
-                            </CardTitle>
-                            <Button variant="outline" size="sm" onClick={() => copyToClipboard(endpoint.example)}>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy
-                            </Button>
-                          </div>
-                          <CardDescription>{endpoint.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <h4 className="font-medium mb-2">Endpoint</h4>
-                            <code className="bg-gray-100 px-2 py-1 rounded">{endpoint.path}</code>
-                          </div>
-
-                          {endpoint.parameters && (
-                            <div>
-                              <h4 className="font-medium mb-2">Parameters</h4>
-                              <div className="space-y-2">
-                                {Object.entries(endpoint.parameters).map(([key, value]) => (
-                                  <div key={key} className="flex">
-                                    <code className="bg-blue-100 px-2 py-1 rounded mr-2 text-sm">{key}</code>
-                                    <span className="text-sm text-gray-600">{value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {endpoint.requestBody && (
-                            <div>
-                              <h4 className="font-medium mb-2">Request Body</h4>
-                              <div className="space-y-2">
-                                {Object.entries(endpoint.requestBody).map(([key, value]) => (
-                                  <div key={key} className="flex">
-                                    <code className="bg-green-100 px-2 py-1 rounded mr-2 text-sm">{key}</code>
-                                    <span className="text-sm text-gray-600">{value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div>
-                            <h4 className="font-medium mb-2">Response</h4>
-                            {typeof endpoint.response === "string" ? (
-                              <p className="text-sm text-gray-600">{endpoint.response}</p>
-                            ) : (
-                              <div className="space-y-2">
-                                {Object.entries(endpoint.response).map(([key, value]) => (
-                                  <div key={key} className="flex">
-                                    <code className="bg-yellow-100 px-2 py-1 rounded mr-2 text-sm">{key}</code>
-                                    <span className="text-sm text-gray-600">{value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <h4 className="font-medium mb-2">Example</h4>
-                            <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                              {endpoint.example}
-                            </pre>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })()
-                ) : (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <Code className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <h3 className="text-lg font-medium mb-2">Select an endpoint</h3>
-                      <p className="text-gray-600">Choose an endpoint from the sidebar to view its documentation</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="examples" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Common Usage Examples</CardTitle>
-                    <CardDescription>Real-world examples of using the MailDelivery API</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div>
-                      <h4 className="font-medium mb-2">1. Create and Monitor Email</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`# Create a new temporary email
-curl -X POST http://localhost:4000/api/email/generate \\
+              <TabsContent value="anonymous" className="space-y-4">
+                <Alert>
+                  <Unlock className="h-4 w-4" />
+                  <AlertDescription>
+                    No authentication required. Perfect for testing and public access.
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Usage</h4>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                    <code className="text-sm">{`# No headers required
+curl ${baseUrl}/api/email/generate \\
+  -X POST \\
   -H "Content-Type: application/json" \\
-  -d '{}'
-
-# Response: {"email":"abc123@domain.com","domain":"domain.com","expiresAt":"..."}
-
-# Check for new emails every 10 seconds
-while true; do
-  curl -s "http://localhost:4000/api/email/list?email=abc123@domain.com" | jq .
-  sleep 10
-done`}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">2. Download Email with Attachments</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`# Get email list
-EMAILS=$(curl -s "http://localhost:4000/json/test@domain.com")
-
-# Extract email ID and attachment IDs
-EMAIL_ID=$(echo $EMAILS | jq -r '.[0].id')
-ATTACHMENT_ID=$(echo $EMAILS | jq -r '.[0].attachments[0].id')
-
-# Download raw email
-curl "http://localhost:4000/api/raw/test@domain.com/$EMAIL_ID" -o email.eml
-
-# Download attachment
-curl "http://localhost:4000/api/attachment/test@domain.com/$ATTACHMENT_ID" -o attachment.pdf`}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">3. Cleanup Old Emails</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`# Delete specific email
-curl -X DELETE "http://localhost:4000/api/delete/test@domain.com/email-id"
-
-# Delete entire email account
-curl -X DELETE "http://localhost:4000/api/deleteaccount/test@domain.com"`}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">4. JavaScript/Node.js Example</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`// Create temporary email
-const response = await fetch('http://localhost:4000/api/email/generate', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ customEmail: 'mytest' })
-});
-const { email } = await response.json();
-
-// Poll for emails
-const checkEmails = async () => {
-  const response = await fetch(\`http://localhost:4000/api/email/list?email=\${email}\`);
-  const { emails } = await response.json();
-  return emails;
-};
-
-// Check every 5 seconds
-setInterval(async () => {
-  const emails = await checkEmails();
-  console.log(\`Received \${emails.length} emails\`);
-}, 5000);`}
-                      </pre>
-                    </div>
-                  </CardContent>
-                </Card>
+  -d '{"customEmail":"test123"}'`}</code>
+                  </pre>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    ⚠️ Limitations: Cannot access emails owned by registered users. Emails are public to all anonymous users.
+                  </p>
+                </div>
               </TabsContent>
 
-              <TabsContent value="docker" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Settings className="h-5 w-5" />
-                      <span>Docker Configuration</span>
-                    </CardTitle>
-                    <CardDescription>How to run MailDelivery with Docker</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Docker Run Command</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`docker run -d \\
-  --restart=unless-stopped \\
-  --name privatetrashmail \\
-  -e "DOMAINS=yourdomain.com,anotherdomain.com" \\
-  -e "DATEFORMAT='D.M.YYYY HH:mm'" \\
-  -e "ADMIN_PASSWORD=your_secure_password_here" \\
-  -e "DISCARD_UNKNOWN=false" \\
-  -e "DELETE_OLDER_THAN_DAYS=1" \\
-  -p 4000:80 \\
-  -p 25:25 \\
-  -v /path/to/data:/var/www/opentrashmail/data \\
-  maildelivery:latest`}
-                      </pre>
-                    </div>
+              <TabsContent value="session" className="space-y-4">
+                <Alert>
+                  <Lock className="h-4 w-4" />
+                  <AlertDescription>
+                    Session-based authentication using httpOnly cookies (recommended for web apps).
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <h4 className="font-semibold">1. Login to get session</h4>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                    <code className="text-sm">{`curl ${baseUrl}/api/admin/auth \\
+  -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '{"username":"user","password":"password"}' \\
+  -c cookies.txt`}</code>
+                  </pre>
+                  <h4 className="font-semibold mt-4">2. Use session in requests</h4>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                    <code className="text-sm">{`curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
+  -b cookies.txt`}</code>
+                  </pre>
+                </div>
+              </TabsContent>
 
-                    <div>
-                      <h4 className="font-medium mb-2">Environment Variables</h4>
-                      <div className="space-y-2">
-                        <div className="flex">
-                          <code className="bg-blue-100 px-2 py-1 rounded mr-2 text-sm">DOMAINS</code>
-                          <span className="text-sm text-gray-600">
-                            Comma-separated list of domains to accept emails for
-                          </span>
-                        </div>
-                        <div className="flex">
-                          <code className="bg-blue-100 px-2 py-1 rounded mr-2 text-sm">ADMIN_PASSWORD</code>
-                          <span className="text-sm text-gray-600">Password for admin panel access</span>
-                        </div>
-                        <div className="flex">
-                          <code className="bg-blue-100 px-2 py-1 rounded mr-2 text-sm">DELETE_OLDER_THAN_DAYS</code>
-                          <span className="text-sm text-gray-600">Days to keep emails before auto-deletion</span>
-                        </div>
-                        <div className="flex">
-                          <code className="bg-blue-100 px-2 py-1 rounded mr-2 text-sm">DISCARD_UNKNOWN</code>
-                          <span className="text-sm text-gray-600">Whether to discard emails to unknown domains</span>
-                        </div>
-                        <div className="flex">
-                          <code className="bg-blue-100 px-2 py-1 rounded mr-2 text-sm">DATEFORMAT</code>
-                          <span className="text-sm text-gray-600">Date format for display</span>
-                        </div>
-                      </div>
-                    </div>
+              <TabsContent value="bearer" className="space-y-4">
+                <Alert>
+                  <Shield className="h-4 w-4" />
+                  <AlertDescription>
+                    Token-based authentication (recommended for API integrations).
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <h4 className="font-semibold">1. Get Bearer Token</h4>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                    <code className="text-sm">{`curl ${baseUrl}/api/admin/auth \\
+  -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '{"username":"user","password":"password"}'
 
-                    <div>
-                      <h4 className="font-medium mb-2">Docker Compose</h4>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
-                        {`version: '3.8'
+# Response:
+# {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}`}</code>
+                  </pre>
+                  <h4 className="font-semibold mt-4">2. Use Bearer Token</h4>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                    <code className="text-sm">{`curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"`}</code>
+                  </pre>
+                </div>
+              </TabsContent>
 
-services:
-  maildelivery:
-    build: .
-    container_name: privatemaildelivery
-    restart: unless-stopped
-    ports:
-      - "4000:80"
-      - "25:25"
-    environment:
-      - DOMAINS=yourdomain.com
-      - ADMIN_PASSWORD=your_secure_password_here
-      - DELETE_OLDER_THAN_DAYS=1
-      - DISCARD_UNKNOWN=false
-    volumes:
-      - ./data:/var/www/opentrashmail/data`}
-                      </pre>
-                    </div>
+              <TabsContent value="basic" className="space-y-4">
+                <Alert>
+                  <User className="h-4 w-4" />
+                  <AlertDescription>
+                    HTTP Basic Authentication (legacy support).
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Usage</h4>
+                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                    <code className="text-sm">{`curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
+  -u username:password
 
-                    <div>
-                      <h4 className="font-medium mb-2">Port Configuration</h4>
-                      <div className="space-y-2">
-                        <div className="flex">
-                          <code className="bg-green-100 px-2 py-1 rounded mr-2 text-sm">80</code>
-                          <span className="text-sm text-gray-600">Web interface and API</span>
-                        </div>
-                        <div className="flex">
-                          <code className="bg-green-100 px-2 py-1 rounded mr-2 text-sm">25</code>
-                          <span className="text-sm text-gray-600">SMTP server for receiving emails</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+# Or with explicit header:
+curl ${baseUrl}/api/email/list?email=myemail@domain.com \\
+  -H "Authorization: Basic $(echo -n username:password | base64)"`}</code>
+                  </pre>
+                </div>
               </TabsContent>
             </Tabs>
-          </div>
+          </CardContent>
+        </Card>
+
+        {/* API Endpoints */}
+        <Card>
+          <CardHeader>
+            <CardTitle>API Endpoints</CardTitle>
+            <CardDescription>Complete reference for all available endpoints</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Generate Email */}
+            <div className="border rounded-lg">
+              <button
+                onClick={() => toggleSection("generate")}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-green-600">POST</Badge>
+                  <code className="font-mono text-sm">/api/email/generate</code>
+                  <span className="text-sm text-muted-foreground">Generate temporary email</span>
+                </div>
+                {expandedSections.generate ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+              </button>
+              
+              {expandedSections.generate && (
+                <div className="p-4 border-t space-y-4">
+                  <div className="flex gap-2">
+                    <Badge variant="outline"><Unlock className="h-3 w-3 mr-1" />Anonymous</Badge>
+                    <Badge variant="outline"><Lock className="h-3 w-3 mr-1" />Authenticated</Badge>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Description</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Create a new temporary email address. Can be random or custom. Anonymous users create public emails (orphan), authenticated users create private emails (auto-owned).
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Request Body</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`{
+  "customEmail": "myname@domain.com" // Optional: Custom email address
+                                      // Or just username: "myname"
+                                      // Leave empty for random
+}`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Response (200 OK)</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`{
+  "email": "abc123xyz@tempmail.local",
+  "domain": "tempmail.local",
+  "expiresAt": "2025-10-13T10:30:00.000Z"
+}`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Example (Anonymous)</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`# Random email
+curl ${baseUrl}/api/email/generate \\
+  -X POST \\
+  -H "Content-Type: application/json"
+
+# Custom email (public, any anonymous can view)
+curl ${baseUrl}/api/email/generate \\
+  -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '{"customEmail":"mytest123"}'`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Example (Authenticated)</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`# Custom email (private, only you can view)
+curl ${baseUrl}/api/email/generate \\
+  -X POST \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -d '{"customEmail":"myemail"}'`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Error Responses</h4>
+                    <div className="space-y-2">
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>409 Conflict:</strong> Email already owned by another user
+                        </AlertDescription>
+                      </Alert>
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>400 Bad Request:</strong> Invalid domain or email format
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* List Emails */}
+            <div className="border rounded-lg">
+              <button
+                onClick={() => toggleSection("list")}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-blue-600">GET</Badge>
+                  <code className="font-mono text-sm">/api/email/list</code>
+                  <span className="text-sm text-muted-foreground">List received emails</span>
+                </div>
+                {expandedSections.list ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+              </button>
+              
+              {expandedSections.list && (
+                <div className="p-4 border-t space-y-4">
+                  <div className="flex gap-2">
+                    <Badge variant="outline"><Unlock className="h-3 w-3 mr-1" />Anonymous</Badge>
+                    <Badge variant="outline"><Lock className="h-3 w-3 mr-1" />Authenticated</Badge>
+                    <Badge variant="outline"><Crown className="h-3 w-3 mr-1" />Admin</Badge>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Description</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Retrieve all emails received for a specific email address. Access control applies: anonymous can only view orphan emails, authenticated users can view own emails or auto-claim orphans, admin can view all.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Query Parameters</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`email (required): Email address to retrieve messages for`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Response (200 OK)</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`{
+  "emails": [
+    {
+      "id": "msg_123",
+      "from": "sender@example.com",
+      "to": "myemail@tempmail.local",
+      "subject": "Welcome!",
+      "body": "Plain text body",
+      "html": "<h1>HTML body</h1>",
+      "timestamp": "2025-10-12T10:00:00.000Z",
+      "read": false,
+      "starred": false
+    }
+  ]
+}`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Example</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`# Anonymous (orphan email only)
+curl "${baseUrl}/api/email/list?email=test@tempmail.local"
+
+# Authenticated (own or orphan)
+curl "${baseUrl}/api/email/list?email=myemail@tempmail.local" \\
+  -H "Authorization: Bearer YOUR_TOKEN"`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Error Responses</h4>
+                    <div className="space-y-2">
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>403 Forbidden:</strong> Email owned by another user
+                        </AlertDescription>
+                      </Alert>
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>400 Bad Request:</strong> Missing email parameter
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Read Single Email */}
+            <div className="border rounded-lg">
+              <button
+                onClick={() => toggleSection("read")}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-blue-600">GET</Badge>
+                  <code className="font-mono text-sm">/api/json/[email]/[id]</code>
+                  <span className="text-sm text-muted-foreground">Read single email</span>
+                </div>
+                {expandedSections.read ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+              </button>
+              
+              {expandedSections.read && (
+                <div className="p-4 border-t space-y-4">
+                  <div className="flex gap-2">
+                    <Badge variant="outline"><Unlock className="h-3 w-3 mr-1" />Anonymous</Badge>
+                    <Badge variant="outline"><Lock className="h-3 w-3 mr-1" />Authenticated</Badge>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Description</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Get details of a specific email message by ID.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">URL Parameters</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`[email]: Email address (e.g., test@tempmail.local)
+[id]: Message ID (e.g., msg_123)`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Example</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`curl "${baseUrl}/api/json/test@tempmail.local/msg_123"`}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Delete Email */}
+            <div className="border rounded-lg">
+              <button
+                onClick={() => toggleSection("delete")}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-red-600">DELETE</Badge>
+                  <code className="font-mono text-sm">/api/delete/[email]/[id]</code>
+                  <span className="text-sm text-muted-foreground">Delete email</span>
+                </div>
+                {expandedSections.delete ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+              </button>
+              
+              {expandedSections.delete && (
+                <div className="p-4 border-t space-y-4">
+                  <div className="flex gap-2">
+                    <Badge variant="outline"><Lock className="h-3 w-3 mr-1" />Authenticated</Badge>
+                    <Badge variant="outline"><Crown className="h-3 w-3 mr-1" />Admin</Badge>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Description</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Delete a specific email message. Requires authentication.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Example</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`curl "${baseUrl}/api/delete/myemail@tempmail.local/msg_123" \\
+  -X DELETE \\
+  -H "Authorization: Bearer YOUR_TOKEN"`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Error Responses</h4>
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>401 Unauthorized:</strong> Authentication required
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Star Email */}
+            <div className="border rounded-lg">
+              <button
+                onClick={() => toggleSection("star")}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-green-600">POST</Badge>
+                  <code className="font-mono text-sm">/api/email/star</code>
+                  <span className="text-sm text-muted-foreground">Star/unstar email</span>
+                </div>
+                {expandedSections.star ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+              </button>
+              
+              {expandedSections.star && (
+                <div className="p-4 border-t space-y-4">
+                  <div className="flex gap-2">
+                    <Badge variant="outline"><Lock className="h-3 w-3 mr-1" />Authenticated</Badge>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Description</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Toggle star status of an email message.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Request Body</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`{
+  "emailAddress": "myemail@tempmail.local",
+  "emailId": "msg_123",
+  "starred": true
+}`}</code>
+                    </pre>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Example</h4>
+                    <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
+                      <code className="text-sm">{`curl ${baseUrl}/api/email/star \\
+  -X POST \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -d '{
+    "emailAddress": "myemail@tempmail.local",
+    "emailId": "msg_123",
+    "starred": true
+  }'`}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Access Control Matrix */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Access Control Matrix</CardTitle>
+            <CardDescription>Who can access what based on email ownership</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3">Email Status</th>
+                    <th className="text-center p-3">Anonymous</th>
+                    <th className="text-center p-3">Owner</th>
+                    <th className="text-center p-3">Other User</th>
+                    <th className="text-center p-3">Admin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="p-3 font-mono text-xs">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">Orphan</Badge>
+                        <span className="text-muted-foreground">(user_id = NULL)</span>
+                      </div>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge className="bg-green-600">✓ View</Badge>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge className="bg-green-600">✓ View + Claim</Badge>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge className="bg-green-600">✓ View + Claim</Badge>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge className="bg-green-600">✓ Full Access</Badge>
+                    </td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3 font-mono text-xs">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">Owned</Badge>
+                        <span className="text-muted-foreground">(has user_id)</span>
+                      </div>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge variant="destructive">✗ Forbidden</Badge>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge className="bg-green-600">✓ Full Access</Badge>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge variant="destructive">✗ Forbidden</Badge>
+                    </td>
+                    <td className="text-center p-3">
+                      <Badge className="bg-green-600">✓ Full Access</Badge>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <Alert className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Note:</strong> When an authenticated user accesses an orphan email for the first time, it automatically gets assigned to them (auto-claim).
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+
+        {/* Rate Limits & Best Practices */}
+        <div className="grid md:grid-cols-2 gap-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-orange-600" />
+                Rate Limits
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                <span className="text-sm">Anonymous Users</span>
+                <Badge>10 req/min</Badge>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                <span className="text-sm">Authenticated Users</span>
+                <Badge>60 req/min</Badge>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                <span className="text-sm">Admin Users</span>
+                <Badge>Unlimited</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                Rate limits are per IP address. Contact admin for higher limits.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-blue-600" />
+                Best Practices
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex items-start gap-2">
+                <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                <span>Use Bearer tokens for API integrations</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                <span>Store tokens securely, never in client code</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                <span>Handle 403/401 errors gracefully</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                <span>Implement exponential backoff for retries</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                <span>Clean up old emails regularly</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Support & Resources */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Support & Resources</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4">
+              <Link href="/docs/API_AUTH_DIFFERENCES.md" target="_blank">
+                <Card className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <Code className="h-8 w-8 text-blue-600 mb-2" />
+                    <h3 className="font-semibold mb-1">Auth Differences</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Detailed comparison of auth methods
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link href="/docs/ANONYMOUS_MODE.md" target="_blank">
+                <Card className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <Unlock className="h-8 w-8 text-green-600 mb-2" />
+                    <h3 className="font-semibold mb-1">Anonymous Mode</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Complete anonymous mode guide
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link href="/docs/API_FLOW_DIAGRAM.md" target="_blank">
+                <Card className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <List className="h-8 w-8 text-purple-600 mb-2" />
+                    <h3 className="font-semibold mb-1">Flow Diagrams</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Visual API flow references
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t mt-12 py-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-muted-foreground">
+          <p>Need help? Check our <Link href="/" className="underline">documentation</Link> or contact support.</p>
+        </div>
+      </footer>
     </div>
   )
 }

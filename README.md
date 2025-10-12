@@ -11,7 +11,9 @@ A modern, full-featured temporary email service with Gmail-like interface and co
 - 🔍 **Search**: Search through emails
 - 🗂️ **Organization**: Inbox, starred views
 - 🔒 **Privacy**: Automatic email cleanup
-- 👨‍💼 **Admin Panel**: Complete system management
+- 🛡️ **Spam Filter**: Intelligent spam blocking and auto-delete
+- ‍💼 **Admin Panel**: Complete system management
+- 👥 **Multi-Admin**: Support for multiple admin accounts
 - 📊 **Dashboard**: Statistics and monitoring
 - 🐳 **Docker Ready**: Easy deployment with Docker
 - 📚 **API Documentation**: Complete REST API

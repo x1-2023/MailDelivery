@@ -1,6 +1,7 @@
 import { SMTPServer } from "smtp-server"
 import { simpleParser } from "mailparser"
 import { saveIncomingEmail } from "./email-service"
+import { checkEmailAgainstFilters } from "./spam-filter-service"
 
 export function createSMTPServer() {
   const server = new SMTPServer({
@@ -8,17 +9,17 @@ export function createSMTPServer() {
     authOptional: true,
     disabledCommands: ["AUTH"],
 
-    onConnect(session, callback) {
+    onConnect(session: any, callback: any) {
       console.log("SMTP connection from:", session.remoteAddress)
       callback()
     },
 
-    onMailFrom(address, session, callback) {
+    onMailFrom(address: any, session: any, callback: any) {
       console.log("Mail from:", address.address)
       callback()
     },
 
-    onRcptTo(address, session, callback) {
+    onRcptTo(address: any, session: any, callback: any) {
       const domains = process.env.DOMAINS?.split(",") || ["tempmail.local"]
       const emailDomain = address.address.split("@")[1]
 
@@ -32,34 +33,61 @@ export function createSMTPServer() {
       callback()
     },
 
-    onData(stream, session, callback) {
+    onData(stream: any, session: any, callback: any) {
       let emailData = ""
 
-      stream.on("data", (chunk) => {
+      stream.on("data", (chunk: any) => {
         emailData += chunk.toString()
       })
 
       stream.on("end", async () => {
         try {
           const parsed = await simpleParser(emailData)
+          const fromAddress = parsed.from?.text || "Unknown"
+          const subject = parsed.subject || ""
+
+          // Check against spam filters
+          const spamCheck = await checkEmailAgainstFilters(fromAddress, subject)
+
+          if (spamCheck.action === "block") {
+            console.log("Email blocked by spam filter:", {
+              from: fromAddress,
+              subject: subject,
+              filter: spamCheck.matchedFilter?.name,
+            })
+            // Don't save to database, just accept to avoid bounce
+            callback()
+            return
+          }
 
           // Save email to database
           await saveIncomingEmail({
-            from: parsed.from?.text || "Unknown",
+            from: fromAddress,
             to: parsed.to?.text || "Unknown",
-            subject: parsed.subject || "",
+            subject: subject,
             body: parsed.text || "",
             html: parsed.html ? parsed.html.toString() : undefined,
             timestamp: new Date().toISOString(),
             read: false,
             starred: false,
+            spamFiltered: spamCheck.isSpam ? 1 : 0,
+            autoDeleteAt: spamCheck.autoDeleteAt,
           })
 
-          console.log("Email saved:", {
-            from: parsed.from?.text,
-            to: parsed.to?.text,
-            subject: parsed.subject,
-          })
+          if (spamCheck.action === "auto_delete") {
+            console.log("Email marked for auto-deletion:", {
+              from: fromAddress,
+              subject: subject,
+              deleteAt: spamCheck.autoDeleteAt,
+              filter: spamCheck.matchedFilter?.name,
+            })
+          } else {
+            console.log("Email saved:", {
+              from: fromAddress,
+              to: parsed.to?.text,
+              subject: subject,
+            })
+          }
 
           callback()
         } catch (error) {
@@ -81,7 +109,7 @@ if (require.main === module) {
     console.log("SMTP Server listening on port 25")
   })
 
-  server.on("error", (err) => {
+  server.on("error", (err: any) => {
     console.error("SMTP Server error:", err)
   })
 }

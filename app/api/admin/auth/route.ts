@@ -1,16 +1,52 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { authenticateUser } from "@/lib/auth-service"
 
 export async function POST(request: NextRequest) {
   try {
-    const { password } = await request.json()
+    const { username, password } = await request.json()
 
-    const adminPassword = process.env.ADMIN_PASSWORD || "admin123"
-
-    if (password === adminPassword) {
-      return NextResponse.json({ success: true })
-    } else {
-      return NextResponse.json({ error: "Invalid password" }, { status: 401 })
+    if (!username || !password) {
+      return NextResponse.json(
+        { error: "Username and password are required" },
+        { status: 400 }
+      )
     }
+
+    const result = await authenticateUser(username, password)
+
+    if (!result) {
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin
+    if (result.user.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden", message: "Admin access required" },
+        { status: 403 }
+      )
+    }
+
+    // Set session cookie
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: result.user.id,
+        username: result.user.username,
+        role: result.user.role
+      }
+    })
+
+    response.cookies.set("session_token", result.session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365 // 1 year
+    })
+
+    return response
   } catch (error) {
     console.error("Admin auth error:", error)
     return NextResponse.json({ error: "Authentication failed" }, { status: 500 })

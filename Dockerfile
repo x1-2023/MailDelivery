@@ -1,7 +1,17 @@
 FROM node:18-alpine
 
-# Install dependencies
-RUN apk add --no-cache sqlite curl netcat-openbsd
+# Install dependencies including build tools for better-sqlite3 and sqlite3
+RUN apk add --no-cache \
+    sqlite \
+    sqlite-dev \
+    curl \
+    netcat-openbsd \
+    python3 \
+    make \
+    g++ \
+    gcc \
+    libc-dev \
+    linux-headers
 
 # Create app directory
 WORKDIR /var/www/opentrashmail
@@ -36,7 +46,10 @@ ENV PORT=80
 ENV DOMAINS=tempmail.local
 ENV DELETE_OLDER_THAN_DAYS=1
 ENV DISCARD_UNKNOWN=false
-ENV ADMIN_PASSWORD=admin123
+
+# Authentication - Set these to auto-create admin on first run
+# ENV ADMIN_USERNAME=admin
+# ENV ADMIN_PASSWORD=changeme
 
 # Start script
 COPY start.sh /start.sh

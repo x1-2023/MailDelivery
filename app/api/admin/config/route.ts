@@ -1,7 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSystemConfig, updateSystemConfig } from "@/lib/admin-service"
+import { requireAdmin } from "@/lib/auth-middleware"
 
 export async function GET(request: NextRequest) {
+  // Require admin authentication
+  const auth = await requireAdmin(request)
+  if (auth.error) {
+    return auth.error
+  }
+
   try {
     const config = await getSystemConfig()
     return NextResponse.json(config)
@@ -12,6 +19,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  // Require admin authentication
+  const auth = await requireAdmin(request)
+  if (auth.error) {
+    return auth.error
+  }
+
   try {
     const updates = await request.json()
     const config = await updateSystemConfig(updates)

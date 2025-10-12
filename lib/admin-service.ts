@@ -153,3 +153,96 @@ function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
+
+// Admin authentication middleware
+export async function requireAdmin(request: Request): Promise<{ user?: any; error?: Response }> {
+  const { NextResponse } = await import("next/server")
+  
+  try {
+    // Get session token from cookies
+    const cookieHeader = request.headers.get("cookie")
+    if (!cookieHeader) {
+      return {
+        error: NextResponse.json(
+          { error: "Unauthorized", message: "No session token" },
+          { status: 401 }
+        ),
+      }
+    }
+
+    // Parse cookie to get session_token
+    const cookies = Object.fromEntries(
+      cookieHeader.split("; ").map((c) => {
+        const [key, ...v] = c.split("=")
+        return [key, v.join("=")]
+      })
+    )
+
+    const sessionToken = cookies.session_token
+    if (!sessionToken) {
+      return {
+        error: NextResponse.json(
+          { error: "Unauthorized", message: "No session token" },
+          { status: 401 }
+        ),
+      }
+    }
+
+    // Verify session and get user
+    const session = await db.get(
+      "SELECT * FROM sessions WHERE token = ? AND expires_at > datetime('now')",
+      [sessionToken]
+    )
+
+    if (!session) {
+      return {
+        error: NextResponse.json(
+          { error: "Unauthorized", message: "Invalid or expired session" },
+          { status: 401 }
+        ),
+      }
+    }
+
+    // Get user
+    const user = await db.get("SELECT * FROM users WHERE id = ?", [session.user_id])
+
+    if (!user) {
+      return {
+        error: NextResponse.json(
+          { error: "Unauthorized", message: "User not found" },
+          { status: 401 }
+        ),
+      }
+    }
+
+    // Check if user is admin
+    if (user.role !== "admin") {
+      return {
+        error: NextResponse.json(
+          { error: "Forbidden", message: "Admin access required" },
+          { status: 403 }
+        ),
+      }
+    }
+
+    // Check if account is active
+    if (!user.is_active) {
+      return {
+        error: NextResponse.json(
+          { error: "Forbidden", message: "Account is deactivated" },
+          { status: 403 }
+        ),
+      }
+    }
+
+    return { user }
+  } catch (error) {
+    console.error("Admin auth error:", error)
+    return {
+      error: NextResponse.json(
+        { error: "Internal server error" },
+        { status: 500 }
+      ),
+    }
+  }
+}

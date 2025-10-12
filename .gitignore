@@ -40,3 +40,36 @@ next-env.d.ts
 .Trashes
 ehthumbs.db
 Thumbs.db
+*~
+
+# IDE files
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*.swn
+.history/
+
+# Logs
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# PM2
+.pm2/
+pids/
+*.pid
+*.seed
+*.pid.lock

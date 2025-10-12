@@ -75,6 +75,44 @@ export class Database {
       CREATE INDEX IF NOT EXISTS idx_temp_emails_expires ON temp_emails(expires_at);
     `)
 
+    // Create spam filter rules table
+    await this.db.exec(`
+      CREATE TABLE IF NOT EXISTS spam_filters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        filter_type TEXT NOT NULL CHECK(filter_type IN ('subject', 'sender', 'both')),
+        subject_pattern TEXT,
+        sender_pattern TEXT,
+        action TEXT NOT NULL CHECK(action IN ('block', 'auto_delete')),
+        auto_delete_minutes INTEGER,
+        enabled INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    // Add spam_filtered column to emails table for tracking
+    await this.db
+      .exec(`
+      ALTER TABLE emails ADD COLUMN spam_filtered INTEGER DEFAULT 0;
+    `)
+      .catch(() => {
+        // Column might already exist, ignore error
+      })
+
+    await this.db
+      .exec(`
+      ALTER TABLE emails ADD COLUMN auto_delete_at TEXT;
+    `)
+      .catch(() => {
+        // Column might already exist, ignore error
+      })
+
+    await this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_emails_spam_filtered ON emails(spam_filtered);
+      CREATE INDEX IF NOT EXISTS idx_emails_auto_delete ON emails(auto_delete_at);
+    `)
+
     return this.db
   }
 
