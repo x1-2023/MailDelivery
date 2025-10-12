@@ -21,7 +21,27 @@ export interface Email {
   autoDeleteAt?: string
 }
 
-const db = new Database()
+let db: Database | null = null
+let dbInitPromise: Promise<Database> | null = null
+
+async function getDb(): Promise<Database> {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    throw new Error('Database not available during build')
+  }
+  
+  if (db) return db
+  
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      const instance = new Database()
+      await instance.init()
+      db = instance
+      return instance
+    })()
+  }
+  
+  return dbInitPromise
+}
 
 export function generateRandomEmail(domain: string): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -33,7 +53,7 @@ export function generateRandomEmail(domain: string): string {
 }
 
 export async function createTempEmail(tempEmail: TempEmail): Promise<TempEmail> {
-  await db.run(
+  await (await getDb()).run(
     "INSERT OR REPLACE INTO temp_emails (email, domain, expires_at, user_id, is_anonymous) VALUES (?, ?, ?, ?, ?)",
     [tempEmail.email, tempEmail.domain, tempEmail.expiresAt, tempEmail.userId || null, tempEmail.userId ? 0 : 1],
   )
@@ -42,11 +62,11 @@ export async function createTempEmail(tempEmail: TempEmail): Promise<TempEmail> 
 
 export async function getEmailsForAddress(email: string): Promise<Email[]> {
   // Try exact match first
-  let rows = await db.all("SELECT * FROM emails WHERE to_address = ? ORDER BY timestamp DESC", [email])
+  let rows = await (await getDb()).all("SELECT * FROM emails WHERE to_address = ? ORDER BY timestamp DESC", [email])
   
   // If no results, try searching with LIKE for emails that contain the address
   if (rows.length === 0) {
-    rows = await db.all("SELECT * FROM emails WHERE to_address LIKE ? ORDER BY timestamp DESC", [`%${email}%`])
+    rows = await (await getDb()).all("SELECT * FROM emails WHERE to_address LIKE ? ORDER BY timestamp DESC", [`%${email}%`])
   }
 
   return rows.map((row) => ({
@@ -64,7 +84,7 @@ export async function getEmailsForAddress(email: string): Promise<Email[]> {
 
 export async function saveIncomingEmail(email: Omit<Email, "id">): Promise<void> {
   const id = generateId()
-  await db.run(
+  await (await getDb()).run(
     `INSERT INTO emails (id, from_address, to_address, subject, body, html, timestamp, read, starred, spam_filtered, auto_delete_at) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -84,15 +104,15 @@ export async function saveIncomingEmail(email: Omit<Email, "id">): Promise<void>
 }
 
 export async function deleteEmail(id: string): Promise<void> {
-  await db.run("DELETE FROM emails WHERE id = ?", [id])
+  await (await getDb()).run("DELETE FROM emails WHERE id = ?", [id])
 }
 
 export async function markEmailAsRead(id: string): Promise<void> {
-  await db.run("UPDATE emails SET read = 1 WHERE id = ?", [id])
+  await (await getDb()).run("UPDATE emails SET read = 1 WHERE id = ?", [id])
 }
 
 export async function toggleEmailStar(id: string, starred: boolean): Promise<void> {
-  await db.run("UPDATE emails SET starred = ? WHERE id = ?", [starred ? 1 : 0, id])
+  await (await getDb()).run("UPDATE emails SET starred = ? WHERE id = ?", [starred ? 1 : 0, id])
 }
 
 export async function cleanupExpiredEmails(): Promise<void> {
@@ -100,9 +120,9 @@ export async function cleanupExpiredEmails(): Promise<void> {
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - deleteOlderThanDays)
 
-  await db.run("DELETE FROM emails WHERE timestamp < ?", [cutoffDate.toISOString()])
+  await (await getDb()).run("DELETE FROM emails WHERE timestamp < ?", [cutoffDate.toISOString()])
 
-  await db.run("DELETE FROM temp_emails WHERE expires_at < ?", [new Date().toISOString()])
+  await (await getDb()).run("DELETE FROM temp_emails WHERE expires_at < ?", [new Date().toISOString()])
 }
 
 function generateId(): string {
@@ -110,7 +130,7 @@ function generateId(): string {
 }
 
 export async function getRawEmail(email: string, id: string): Promise<{ raw: string } | null> {
-  const row = await db.get("SELECT raw FROM emails WHERE to_address = ? AND id = ?", [email, id])
+  const row = await (await getDb()).get("SELECT raw FROM emails WHERE to_address = ? AND id = ?", [email, id])
   return row ? { raw: row.raw } : null
 }
 
@@ -123,7 +143,7 @@ export async function getEmailAttachment(
   filename: string
   size: number
 } | null> {
-  const row = await db.get(
+  const row = await (await getDb()).get(
     `SELECT a.data, a.mime_type, a.filename, a.size 
      FROM attachments a 
      JOIN emails e ON a.email_id = e.id 
@@ -143,35 +163,35 @@ export async function getEmailAttachment(
 
 export async function deleteSpecificEmail(email: string, id: string): Promise<boolean> {
   // Delete attachments first
-  await db.run("DELETE FROM attachments WHERE email_id = ?", [id])
+  await (await getDb()).run("DELETE FROM attachments WHERE email_id = ?", [id])
 
   // Delete email
-  const result = await db.run("DELETE FROM emails WHERE to_address = ? AND id = ?", [email, id])
+  const result = await (await getDb()).run("DELETE FROM emails WHERE to_address = ? AND id = ?", [email, id])
 
   return (result.changes || 0) > 0
 }
 
 export async function deleteAllEmailsForAccount(email: string): Promise<number> {
   // Get all email IDs for this account
-  const emailIds = await db.all("SELECT id FROM emails WHERE to_address = ?", [email])
+  const emailIds = await (await getDb()).all("SELECT id FROM emails WHERE to_address = ?", [email])
 
   // Delete all attachments for these emails
   for (const emailRow of emailIds) {
-    await db.run("DELETE FROM attachments WHERE email_id = ?", [emailRow.id])
+    await (await getDb()).run("DELETE FROM attachments WHERE email_id = ?", [emailRow.id])
   }
 
   // Delete all emails for this account
-  const result = await db.run("DELETE FROM emails WHERE to_address = ?", [email])
+  const result = await (await getDb()).run("DELETE FROM emails WHERE to_address = ?", [email])
 
   // Delete temp email record
-  await db.run("DELETE FROM temp_emails WHERE email = ?", [email])
+  await (await getDb()).run("DELETE FROM temp_emails WHERE email = ?", [email])
 
   return result.changes || 0
 }
 
 export async function getEmailsForAddressWithAttachments(email: string): Promise<(Email & { attachments?: any[] })[]> {
   // Try exact match first
-  let rows = await db.all(
+  let rows = await (await getDb()).all(
     `
     SELECT e.*, 
            GROUP_CONCAT(a.id) as attachment_ids,
@@ -189,7 +209,7 @@ export async function getEmailsForAddressWithAttachments(email: string): Promise
 
   // If no results, try searching with LIKE for emails that contain the address
   if (rows.length === 0) {
-    rows = await db.all(
+    rows = await (await getDb()).all(
       `
       SELECT e.*, 
              GROUP_CONCAT(a.id) as attachment_ids,
@@ -237,7 +257,7 @@ export async function getSpecificEmailWithAttachments(
     })
   | null
 > {
-  const row = await db.get(
+  const row = await (await getDb()).get(
     `
     SELECT e.*, 
            GROUP_CONCAT(a.id) as attachment_ids,
@@ -279,6 +299,7 @@ export async function getSpecificEmailWithAttachments(
 }
 
 export async function getAllEmailAccounts(): Promise<string[]> {
-  const rows = await db.all("SELECT DISTINCT to_address FROM emails ORDER BY to_address")
+  const rows = await (await getDb()).all("SELECT DISTINCT to_address FROM emails ORDER BY to_address")
   return rows.map((row) => row.to_address)
 }
+

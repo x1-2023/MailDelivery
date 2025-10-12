@@ -3,7 +3,14 @@ import { requireAdmin } from "@/lib/admin-service"
 import { Database } from "@/lib/database"
 import bcrypt from "bcryptjs"
 
-const db = new Database()
+let db: Database | null = null
+async function getDb() {
+  if (!db) {
+    db = new Database()
+    await (await getDb()).init()
+  }
+  return db
+}
 
 // GET - List all admins
 export async function GET(request: NextRequest) {
@@ -13,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const admins = await db.all(`
+    const admins = await (await getDb()).all(`
       SELECT 
         id, 
         username, 
@@ -74,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if username already exists
-    const existing = await db.get(
+    const existing = await (await getDb()).get(
       "SELECT id FROM users WHERE username = ?",
       [username]
     )
@@ -90,7 +97,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Insert new admin
-    const result = await db.run(
+    const result = await (await getDb()).run(
       `INSERT INTO users (username, password, email, role, is_active, created_at) 
        VALUES (?, ?, ?, ?, 1, datetime('now'))`,
       [username, hashedPassword, email || null, role]
@@ -134,7 +141,7 @@ export async function PUT(request: NextRequest) {
 
     if (username) {
       // Check if new username is already taken by another admin
-      const existing = await db.get(
+      const existing = await (await getDb()).get(
         "SELECT id FROM users WHERE username = ? AND id != ?",
         [username, id]
       )
@@ -180,7 +187,7 @@ export async function PUT(request: NextRequest) {
     updates.push("updated_at = datetime('now')")
     values.push(id)
 
-    await db.run(
+    await (await getDb()).run(
       `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
       values
     )
@@ -217,7 +224,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if this is the last admin
-    const adminCount = await db.get(
+    const adminCount = await (await getDb()).get(
       "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
     )
 
@@ -237,7 +244,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await db.run("DELETE FROM users WHERE id = ? AND role = 'admin'", [id])
+    await (await getDb()).run("DELETE FROM users WHERE id = ? AND role = 'admin'", [id])
 
     return NextResponse.json({
       success: true,
@@ -281,7 +288,7 @@ export async function PATCH(request: NextRequest) {
 
     // Check if this is the last active admin
     if (!is_active) {
-      const activeCount = await db.get(
+      const activeCount = await (await getDb()).get(
         "SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND is_active = 1"
       )
 
@@ -293,7 +300,7 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    await db.run(
+    await (await getDb()).run(
       "UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?",
       [is_active ? 1 : 0, id]
     )
@@ -310,3 +317,4 @@ export async function PATCH(request: NextRequest) {
     )
   }
 }
+

@@ -1,6 +1,26 @@
 import { Database } from "./database"
 
-const db = new Database()
+let db: Database | null = null
+let dbInitPromise: Promise<Database> | null = null
+
+async function getDb(): Promise<Database> {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    throw new Error('Database not available during build')
+  }
+  
+  if (db) return db
+  
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      const instance = new Database()
+      await instance.init()
+      db = instance
+      return instance
+    })()
+  }
+  
+  return dbInitPromise
+}
 
 export interface SpamFilter {
   id?: number
@@ -26,21 +46,21 @@ export interface EmailCheckResult {
  * Get all spam filter rules
  */
 export async function getAllSpamFilters(): Promise<SpamFilter[]> {
-  return await db.all("SELECT * FROM spam_filters ORDER BY created_at DESC")
+  return await (await getDb()).all("SELECT * FROM spam_filters ORDER BY created_at DESC")
 }
 
 /**
  * Get enabled spam filter rules only
  */
 export async function getEnabledSpamFilters(): Promise<SpamFilter[]> {
-  return await db.all("SELECT * FROM spam_filters WHERE enabled = 1 ORDER BY created_at DESC")
+  return await (await getDb()).all("SELECT * FROM spam_filters WHERE enabled = 1 ORDER BY created_at DESC")
 }
 
 /**
  * Create new spam filter rule
  */
 export async function createSpamFilter(filter: SpamFilter): Promise<number> {
-  const result = await db.run(
+  const result = await (await getDb()).run(
     `INSERT INTO spam_filters (
       name, filter_type, subject_pattern, sender_pattern, 
       action, auto_delete_minutes, enabled
@@ -97,21 +117,21 @@ export async function updateSpamFilter(id: number, filter: Partial<SpamFilter>):
   updates.push("updated_at = CURRENT_TIMESTAMP")
   values.push(id)
 
-  await db.run(`UPDATE spam_filters SET ${updates.join(", ")} WHERE id = ?`, values)
+  await (await getDb()).run(`UPDATE spam_filters SET ${updates.join(", ")} WHERE id = ?`, values)
 }
 
 /**
  * Delete spam filter rule
  */
 export async function deleteSpamFilter(id: number): Promise<void> {
-  await db.run("DELETE FROM spam_filters WHERE id = ?", [id])
+  await (await getDb()).run("DELETE FROM spam_filters WHERE id = ?", [id])
 }
 
 /**
  * Toggle spam filter enabled status
  */
 export async function toggleSpamFilter(id: number, enabled: boolean): Promise<void> {
-  await db.run("UPDATE spam_filters SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [
+  await (await getDb()).run("UPDATE spam_filters SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [
     enabled ? 1 : 0,
     id,
   ])
@@ -183,7 +203,7 @@ export async function checkEmailAgainstFilters(
  */
 export async function getEmailsForAutoDeletion(): Promise<any[]> {
   const now = new Date().toISOString()
-  return await db.all(
+  return await (await getDb()).all(
     `SELECT id, to_address, subject, auto_delete_at 
      FROM emails 
      WHERE spam_filtered = 1 
@@ -200,7 +220,7 @@ export async function processAutoDeletion(): Promise<number> {
   const emails = await getEmailsForAutoDeletion()
 
   for (const email of emails) {
-    await db.run("DELETE FROM emails WHERE id = ?", [email.id])
+    await (await getDb()).run("DELETE FROM emails WHERE id = ?", [email.id])
   }
 
   return emails.length
@@ -214,8 +234,8 @@ export async function getSpamStats(): Promise<{
   total_auto_deleted: number
   pending_deletion: number
 }> {
-  const blocked = await db.get("SELECT COUNT(*) as count FROM emails WHERE spam_filtered = 1 AND auto_delete_at IS NULL")
-  const autoDeleted = await db.get("SELECT COUNT(*) as count FROM emails WHERE spam_filtered = 1 AND auto_delete_at IS NOT NULL")
+  const blocked = await (await getDb()).get("SELECT COUNT(*) as count FROM emails WHERE spam_filtered = 1 AND auto_delete_at IS NULL")
+  const autoDeleted = await (await getDb()).get("SELECT COUNT(*) as count FROM emails WHERE spam_filtered = 1 AND auto_delete_at IS NOT NULL")
   const pending = (await getEmailsForAutoDeletion()).length
 
   return {
@@ -224,3 +244,4 @@ export async function getSpamStats(): Promise<{
     pending_deletion: pending,
   }
 }
+

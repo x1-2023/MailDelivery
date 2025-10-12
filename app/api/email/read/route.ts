@@ -3,7 +3,14 @@ import { markEmailAsRead } from "@/lib/email-service"
 import { allowAnonymous } from "@/lib/auth-middleware"
 import { Database } from "@/lib/database"
 
-const db = new Database()
+let db: Database | null = null
+async function getDb() {
+  if (!db) {
+    db = new Database()
+    await db.init()
+  }
+  return db
+}
 
 export async function POST(request: NextRequest) {
   // Allow both authenticated and anonymous users
@@ -17,7 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get email to check ownership
-    const email = await db.get("SELECT to_address FROM emails WHERE id = ?", [id])
+    const database = await getDb()
+    const email = await database.get("SELECT to_address FROM emails WHERE id = ?", [id])
     
     if (!email) {
       return NextResponse.json({ error: "Email not found" }, { status: 404 })
