@@ -11,12 +11,17 @@ try {
     process.exit(1)
   }
 
-  const db = new Database(dbPath)
+  const db = new Database(dbPath, {
+    timeout: 10000, // Wait up to 10 seconds for locks
+    readonly: true // Read-only for listing
+  })
   
   // Enable WAL mode for better concurrent access
   db.pragma("journal_mode = WAL")
-  // Set busy timeout to 5 seconds
-  db.pragma("busy_timeout = 5000")
+  // Set busy timeout to 10 seconds
+  db.pragma("busy_timeout = 10000")
+  // Increase cache size
+  db.pragma("cache_size = 10000")
 
   // List all users
   const users = db.prepare(`

@@ -10,12 +10,18 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true })
 }
 
-export const authDb = new Database(dbPath)
+export const authDb = new Database(dbPath, {
+  timeout: 5000, // Wait up to 5 seconds for locks
+  readonly: false,
+  fileMustExist: false
+})
 
 // Enable WAL mode for better concurrent access
 authDb.pragma("journal_mode = WAL")
 // Set busy timeout to 5 seconds
 authDb.pragma("busy_timeout = 5000")
+// Increase cache size for better performance
+authDb.pragma("cache_size = 10000")
 
 // Initialize auth tables
 export function initializeAuthTables() {

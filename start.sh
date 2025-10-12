@@ -16,13 +16,31 @@ npm start &
 
 # Wait for application and database to be ready
 echo "Waiting for database initialization..."
-sleep 5
+sleep 8
+
+# Additional wait for WAL mode to be fully set up
+echo "Waiting for WAL mode initialization..."
+sleep 2
 
 # Check if admin user exists, if not create default admin
 echo "Checking admin user..."
 if [ ! -z "$ADMIN_USERNAME" ] && [ ! -z "$ADMIN_PASSWORD" ]; then
   echo "Creating admin user: $ADMIN_USERNAME"
-  node scripts/create-admin.js "$ADMIN_USERNAME" "$ADMIN_PASSWORD" || echo "⚠️  Admin creation failed. You can create it manually later."
+  # Retry logic with exponential backoff
+  max_retries=3
+  retry_count=0
+  while [ $retry_count -lt $max_retries ]; do
+    if node scripts/create-admin.js "$ADMIN_USERNAME" "$ADMIN_PASSWORD"; then
+      break
+    fi
+    retry_count=$((retry_count + 1))
+    if [ $retry_count -lt $max_retries ]; then
+      echo "Retrying in 3 seconds... (attempt $((retry_count + 1))/$max_retries)"
+      sleep 3
+    else
+      echo "⚠️  Admin creation failed after $max_retries attempts. You can create it manually later."
+    fi
+  done
 else
   echo "⚠️  ADMIN_USERNAME and ADMIN_PASSWORD not set!"
   echo "   To create admin user, run:"
