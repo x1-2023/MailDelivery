@@ -218,11 +218,11 @@ export default function SpamFiltersManager({ darkMode }: { darkMode: boolean }) 
       {/* Statistics Cards */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  <p className={`text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                     Blocked (Never Saved)
                   </p>
                   <p className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
@@ -234,11 +234,11 @@ export default function SpamFiltersManager({ darkMode }: { darkMode: boolean }) 
             </CardContent>
           </Card>
 
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  <p className={`text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                     Auto-Delete Queue
                   </p>
                   <p className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
@@ -250,11 +250,11 @@ export default function SpamFiltersManager({ darkMode }: { darkMode: boolean }) 
             </CardContent>
           </Card>
 
-          <Card className={darkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white"}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  <p className={`text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                     Pending Deletion
                   </p>
                   <p className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
@@ -269,15 +269,15 @@ export default function SpamFiltersManager({ darkMode }: { darkMode: boolean }) 
       )}
 
       {/* Filters List */}
-      <Card className={darkMode ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white shadow-xl"}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
+              <CardTitle className={`flex items-center gap-2 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                <Shield className="h-5 w-5 text-blue-500" />
                 Spam Filter Rules
               </CardTitle>
-              <CardDescription>
+              <CardDescription className={darkMode ? "text-gray-400" : "text-gray-600"}>
                 Block or auto-delete spam emails based on subject or sender
               </CardDescription>
             </div>
@@ -453,10 +453,16 @@ export default function SpamFiltersManager({ darkMode }: { darkMode: boolean }) 
         </CardHeader>
         <CardContent>
           {filters.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No spam filters configured yet</p>
-              <p className="text-sm">Click "Add Filter" to create your first rule</p>
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg mb-4">
+                <Shield className="h-10 w-10 text-white" />
+              </div>
+              <p className={`text-lg font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                No spam filters configured yet
+              </p>
+              <p className={`text-sm mb-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                Click "Add Filter" to create your first rule
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

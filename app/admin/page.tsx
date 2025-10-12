@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Users, Mail, Database, Trash2, Eye, BarChart3, Shield, HardDrive, Activity, AlertTriangle } from "lucide-react"
+import { Users, Mail, Database, Trash2, Eye, BarChart3, Shield, HardDrive, Activity, AlertTriangle, Search, Moon, Sun } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import UserManagement from "@/components/user-management"
 import SpamFiltersManager from "@/components/spam-filters-manager"
@@ -51,6 +51,17 @@ export default function AdminPanel() {
   const [accountEmails, setAccountEmails] = useState<any[]>([])
   const [showEmailDialog, setShowEmailDialog] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [orphanEmails, setOrphanEmails] = useState<string[]>([])
+  const [loadingOrphans, setLoadingOrphans] = useState(false)
+  const [activeTab, setActiveTab] = useState("dashboard")
+  const [emailSearch, setEmailSearch] = useState("")
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([])
+  const [selectedEmail, setSelectedEmail] = useState<string | null>(null)
+  const [emailMessages, setEmailMessages] = useState<any[]>([])
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [selectedMessage, setSelectedMessage] = useState<any | null>(null)
+  const [showMessageDialog, setShowMessageDialog] = useState(false)
+  const [messageSearchTerm, setMessageSearchTerm] = useState("")
 
   // Check if already authenticated
   useEffect(() => {
@@ -111,6 +122,17 @@ export default function AdminPanel() {
     setPassword("")
   }
 
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode
+    setDarkMode(newDarkMode)
+    localStorage.setItem("darkMode", String(newDarkMode))
+    if (newDarkMode) {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+  }
+
   const loadAdminData = async () => {
     try {
       // Load stats
@@ -133,8 +155,28 @@ export default function AdminPanel() {
       })
       const configData = await configResponse.json()
       setConfig(configData)
+
+      // Load orphan emails
+      loadOrphanEmails()
     } catch (error) {
       console.error("Failed to load admin data:", error)
+    }
+  }
+
+  const loadOrphanEmails = async () => {
+    setLoadingOrphans(true)
+    try {
+      const response = await fetch("/api/admin/orphan-emails", {
+        credentials: "include",
+      })
+      const data = await response.json()
+      if (data.success) {
+        setOrphanEmails(data.orphanEmails || [])
+      }
+    } catch (error) {
+      console.error("Failed to load orphan emails:", error)
+    } finally {
+      setLoadingOrphans(false)
     }
   }
 
@@ -201,6 +243,79 @@ export default function AdminPanel() {
       toast({
         title: "Error",
         description: "Failed to load emails",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleEmailSearch = async (value: string) => {
+    setEmailSearch(value)
+    
+    if (value.length >= 2) {
+      // Get suggestions from accounts
+      const suggestions = accounts
+        .map(acc => acc.email)
+        .filter(email => email.toLowerCase().includes(value.toLowerCase()))
+        .slice(0, 5)
+      setSearchSuggestions(suggestions)
+    } else {
+      setSearchSuggestions([])
+    }
+  }
+
+  const loadEmailMessages = async (email: string) => {
+    setLoadingMessages(true)
+    setSelectedEmail(email)
+    setMessageSearchTerm("") // Reset search when loading new email
+    try {
+      const response = await fetch(`/api/email/list?email=${email}`, {
+        credentials: "include",
+      })
+      const data = await response.json()
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setEmailMessages(data)
+      } else if (data && Array.isArray(data.emails)) {
+        setEmailMessages(data.emails)
+      } else {
+        setEmailMessages([])
+      }
+    } catch (error) {
+      setEmailMessages([])
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingMessages(false)
+    }
+  }
+
+  // Memoized filtered messages for performance
+  const filteredMessages = useMemo(() => {
+    if (!messageSearchTerm) return emailMessages
+    
+    const searchLower = messageSearchTerm.toLowerCase()
+    return emailMessages.filter(msg => 
+      msg.subject?.toLowerCase().includes(searchLower) ||
+      msg.from?.toLowerCase().includes(searchLower) ||
+      msg.body?.toLowerCase().includes(searchLower)
+    )
+  }, [emailMessages, messageSearchTerm])
+
+  const viewMessage = async (emailId: string) => {
+    try {
+      const response = await fetch(`/api/json/${selectedEmail}/${emailId}`, {
+        credentials: "include",
+      })
+      const data = await response.json()
+      setSelectedMessage(data)
+      setShowMessageDialog(true)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load message",
         variant: "destructive",
       })
     }
@@ -284,31 +399,41 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className={`min-h-screen ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}>
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
+      <header className={`border-b ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Shield className="h-8 w-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
-                <p className="text-gray-600 dark:text-gray-400">MailDelivery System Management</p>
+                <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>Admin Panel</h1>
+                <p className={darkMode ? "text-gray-400" : "text-gray-600"}>MailDelivery System Management</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-              className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Logout
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleDarkMode}
+                className={darkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
+              >
+                {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className={darkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
+              >
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <Tabs defaultValue="dashboard" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7 dark:bg-gray-800">
             <TabsTrigger value="dashboard" className="dark:data-[state=active]:bg-gray-700">
               Dashboard
@@ -452,9 +577,143 @@ export default function AdminPanel() {
           </TabsContent>
 
           <TabsContent value="emails" className="space-y-6">
+            {/* Email Search Section */}
+            <Card className={darkMode ? "bg-gray-800 border-gray-700" : "bg-white shadow-xl"}>
+              <CardHeader>
+                <CardTitle className={`flex items-center gap-2 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                  <Mail className="h-5 w-5 text-blue-600" />
+                  Search & View Emails
+                </CardTitle>
+                <CardDescription className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                  Search for any email address and view all messages
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  <Input
+                    placeholder="Search email address... (e.g., user@domain.com)"
+                    value={emailSearch}
+                    onChange={(e) => handleEmailSearch(e.target.value)}
+                    className={darkMode ? "bg-gray-900 border-gray-600" : ""}
+                  />
+                  {searchSuggestions.length > 0 && (
+                    <div className={`absolute z-10 w-full mt-1 rounded-lg border shadow-lg ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                      {searchSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          onClick={() => {
+                            setEmailSearch(suggestion)
+                            setSearchSuggestions([])
+                            loadEmailMessages(suggestion)
+                          }}
+                          className={`w-full text-left px-4 py-2 hover:bg-opacity-50 ${darkMode ? "hover:bg-gray-700 text-white" : "hover:bg-gray-100"}`}
+                        >
+                          <Mail className="h-4 w-4 inline mr-2 text-blue-600" />
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <Button
+                  onClick={() => loadEmailMessages(emailSearch)}
+                  disabled={!emailSearch || loadingMessages}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {loadingMessages ? "Loading..." : "Search Messages"}
+                </Button>
+
+                {selectedEmail && (
+                  <div className={`p-4 rounded-lg ${darkMode ? "bg-gray-900 border border-gray-700" : "bg-gray-50 border border-gray-200"}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-700"}`}>
+                          Showing messages for:
+                        </p>
+                        <p className={`font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                          {selectedEmail}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">
+                        {emailMessages.filter(msg => 
+                          !messageSearchTerm || 
+                          msg.subject?.toLowerCase().includes(messageSearchTerm.toLowerCase()) ||
+                          msg.from?.toLowerCase().includes(messageSearchTerm.toLowerCase()) ||
+                          msg.body?.toLowerCase().includes(messageSearchTerm.toLowerCase())
+                        ).length} / {emailMessages.length} messages
+                      </Badge>
+                    </div>
+
+                    {/* Message Search */}
+                    <div className="mb-3 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Search in messages... (subject, sender, content)"
+                        value={messageSearchTerm}
+                        onChange={(e) => setMessageSearchTerm(e.target.value)}
+                        className={`pl-10 ${darkMode ? "bg-gray-800 border-gray-600" : ""}`}
+                      />
+                    </div>
+
+                    {emailMessages.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        No messages found
+                      </p>
+                    ) : (
+                      <ScrollArea className="h-96">
+                        <div className="space-y-2">
+                          {emailMessages
+                            .filter(msg => 
+                              !messageSearchTerm || 
+                              msg.subject?.toLowerCase().includes(messageSearchTerm.toLowerCase()) ||
+                              msg.from?.toLowerCase().includes(messageSearchTerm.toLowerCase()) ||
+                              msg.body?.toLowerCase().includes(messageSearchTerm.toLowerCase())
+                            )
+                            .map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`p-3 rounded border cursor-pointer hover:shadow ${
+                                darkMode 
+                                  ? "bg-gray-800 border-gray-700 hover:bg-gray-700" 
+                                  : "bg-white border-gray-200 hover:bg-gray-50"
+                              }`}
+                              onClick={() => viewMessage(msg.id)}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                                      {msg.subject || "(No Subject)"}
+                                    </span>
+                                    {msg.starred && <Badge variant="secondary">⭐</Badge>}
+                                    {!msg.read && <Badge variant="default">New</Badge>}
+                                  </div>
+                                  <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                                    From: {msg.from}
+                                  </p>
+                                  <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                                    {new Date(msg.timestamp).toLocaleString()}
+                                  </p>
+                                </div>
+                                <Button size="sm" variant="ghost">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Email Accounts List */}
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
-                <CardTitle className="dark:text-white">Email Accounts</CardTitle>
+                <CardTitle className="dark:text-white">All Email Accounts</CardTitle>
                 <CardDescription className="dark:text-gray-400">
                   Manage all email accounts and their messages
                 </CardDescription>
@@ -476,7 +735,14 @@ export default function AdminPanel() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <Badge variant="secondary">{account.storageUsed}</Badge>
-                          <Button size="sm" variant="outline" onClick={() => viewAccountEmails(account.email)}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              setEmailSearch(account.email)
+                              loadEmailMessages(account.email)
+                            }}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => deleteAccount(account.email)}>
@@ -490,27 +756,116 @@ export default function AdminPanel() {
               </CardContent>
             </Card>
 
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <Card className={darkMode ? "bg-gradient-to-br from-gray-800 via-gray-900 to-yellow-950 border-yellow-900/50" : "bg-gradient-to-br from-yellow-50 via-white to-yellow-50/50"}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 dark:text-white">
+                <CardTitle className={`flex items-center gap-2 ${darkMode ? "text-white" : "text-gray-900"}`}>
                   <AlertTriangle className="h-5 w-5 text-yellow-500" />
                   Orphan Emails
+                  <Badge variant="secondary" className="ml-2">
+                    {orphanEmails.length}
+                  </Badge>
                 </CardTitle>
-                <CardDescription className="dark:text-gray-400">
+                <CardDescription className={darkMode ? "text-yellow-200" : "text-gray-600"}>
                   Email addresses without owners (from old database before authentication system)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  This feature is integrated into User Management. Go to the "Users" tab, select a user, 
-                  click "Manage Emails", then use the textarea to assign orphan emails to that user.
-                </p>
-                <Button onClick={() => {
-                  document.querySelector('[value="users"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-                }} variant="outline" className="w-full">
-                  <Users className="h-4 w-4 mr-2" />
-                  Go to User Management
-                </Button>
+                <div className="space-y-4">
+                  <div className={`p-4 rounded-lg ${darkMode ? "bg-yellow-900/20 border border-yellow-900/30" : "bg-yellow-50 border border-yellow-200"}`}>
+                    <div className="flex items-start gap-3">
+                      <Mail className={`h-5 w-5 mt-0.5 flex-shrink-0 ${darkMode ? "text-yellow-400" : "text-yellow-600"}`} />
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium mb-1 ${darkMode ? "text-yellow-100" : "text-yellow-900"}`}>
+                          Assign to Users
+                        </p>
+                        <p className={`text-sm ${darkMode ? "text-yellow-300/80" : "text-yellow-700"}`}>
+                          Go to "Users" tab → Select user → "Manage Emails" → Paste email addresses to assign ownership.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingOrphans ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
+                      <p className={`text-sm mt-2 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                        Loading orphan emails...
+                      </p>
+                    </div>
+                  ) : orphanEmails.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                        <Mail className="h-8 w-8 text-green-600" />
+                      </div>
+                      <p className={`font-medium mb-1 ${darkMode ? "text-gray-200" : "text-gray-900"}`}>
+                        All Clear!
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        No orphan emails found. All emails are assigned to users.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                          Orphan Email List:
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(orphanEmails.join('\n'))
+                            toast({
+                              title: "Copied!",
+                              description: `${orphanEmails.length} email addresses copied to clipboard`,
+                            })
+                          }}
+                          className={darkMode ? "border-yellow-900/30" : ""}
+                        >
+                          Copy All
+                        </Button>
+                      </div>
+                      <ScrollArea className={`h-64 rounded-lg border ${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"}`}>
+                        <div className="p-3 space-y-1">
+                          {orphanEmails.map((email, index) => (
+                            <div
+                              key={index}
+                              className={`flex items-center justify-between p-2 rounded hover:bg-opacity-50 ${
+                                darkMode ? "hover:bg-yellow-900/20" : "hover:bg-yellow-50"
+                              }`}
+                            >
+                              <code className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                                {email}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(email)
+                                  toast({
+                                    title: "Copied!",
+                                    description: email,
+                                  })
+                                }}
+                                className="h-7 px-2"
+                              >
+                                Copy
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                  
+                  <Button 
+                    onClick={() => setActiveTab("users")} 
+                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Go to User Management
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -634,7 +989,89 @@ export default function AdminPanel() {
         </Tabs>
       </div>
 
-      {/* Email Dialog */}
+      {/* Message Detail Dialog */}
+      <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] dark:bg-gray-800 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="dark:text-white">
+              {selectedMessage?.subject || "(No Subject)"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedMessage && (
+            <ScrollArea className="h-[60vh]">
+              <div className="space-y-4">
+                <div className={`p-4 rounded-lg ${darkMode ? "bg-slate-900/50" : "bg-gray-50"}`}>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className={`font-medium ${darkMode ? "text-slate-400" : "text-gray-600"}`}>From:</span>
+                      <p className={darkMode ? "text-white" : "text-gray-900"}>{selectedMessage.from}</p>
+                    </div>
+                    <div>
+                      <span className={`font-medium ${darkMode ? "text-slate-400" : "text-gray-600"}`}>To:</span>
+                      <p className={darkMode ? "text-white" : "text-gray-900"}>{selectedMessage.to}</p>
+                    </div>
+                    <div>
+                      <span className={`font-medium ${darkMode ? "text-slate-400" : "text-gray-600"}`}>Date:</span>
+                      <p className={darkMode ? "text-white" : "text-gray-900"}>
+                        {new Date(selectedMessage.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className={`font-medium ${darkMode ? "text-slate-400" : "text-gray-600"}`}>ID:</span>
+                      <p className={`text-xs ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
+                        {selectedMessage.id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className={`font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    Message Content:
+                  </h3>
+                  {selectedMessage.html ? (
+                    <div 
+                      className={`p-4 rounded-lg border ${darkMode ? "bg-white text-black border-slate-700" : "bg-white border-gray-200"}`}
+                      dangerouslySetInnerHTML={{ __html: selectedMessage.html }}
+                    />
+                  ) : (
+                    <pre className={`p-4 rounded-lg border whitespace-pre-wrap ${darkMode ? "bg-slate-900 text-white border-slate-700" : "bg-gray-50 text-gray-900 border-gray-200"}`}>
+                      {selectedMessage.body}
+                    </pre>
+                  )}
+                </div>
+
+                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
+                  <div>
+                    <h3 className={`font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                      Attachments ({selectedMessage.attachments.length}):
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedMessage.attachments.map((att: any, idx: number) => (
+                        <div 
+                          key={idx}
+                          className={`p-3 rounded border flex items-center justify-between ${darkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-200"}`}
+                        >
+                          <div>
+                            <p className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                              {att.filename}
+                            </p>
+                            <p className={`text-sm ${darkMode ? "text-slate-400" : "text-gray-600"}`}>
+                              {att.contentType} • {(att.size / 1024).toFixed(2)} KB
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Old Email Dialog (for account view) */}
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
