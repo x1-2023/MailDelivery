@@ -86,12 +86,9 @@ export default function AdminPanel() {
         console.error("Session check failed:", error)
       }
 
-      // Fallback to localStorage check
-      const authToken = localStorage.getItem("admin_auth")
-      if (authToken === "authenticated") {
-        setIsAuthenticated(true)
-        loadAdminData()
-      }
+      // If session check failed, clear localStorage and show login form
+      localStorage.removeItem("admin_auth")
+      localStorage.removeItem("admin_username")
     }
 
     checkAuth()
