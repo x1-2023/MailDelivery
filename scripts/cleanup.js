@@ -1,4 +1,4 @@
-const { cleanupExpiredEmails } = require("../lib/email-service")
+import { cleanupExpiredEmails } from "../lib/email-service.js"
 
 async function runCleanup() {
   try {
