@@ -12,14 +12,14 @@ try {
   }
 
   const db = new Database(dbPath, {
-    timeout: 10000, // Wait up to 10 seconds for locks
+    timeout: 30000, // Wait up to 30 seconds for locks
     readonly: true // Read-only for listing
   })
   
   // Enable WAL mode for better concurrent access
   db.pragma("journal_mode = WAL")
-  // Set busy timeout to 10 seconds
-  db.pragma("busy_timeout = 10000")
+  // Set busy timeout to 30 seconds
+  db.pragma("busy_timeout = 30000")
   // Increase cache size
   db.pragma("cache_size = 10000")
 

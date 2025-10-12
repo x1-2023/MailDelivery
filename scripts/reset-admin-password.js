@@ -28,14 +28,14 @@ try {
   }
 
   const db = new Database(dbPath, {
-    timeout: 10000, // Wait up to 10 seconds for locks
+    timeout: 30000, // Wait up to 30 seconds for locks
     readonly: false
   })
   
   // Enable WAL mode for better concurrent access
   db.pragma("journal_mode = WAL")
-  // Set busy timeout to 10 seconds
-  db.pragma("busy_timeout = 10000")
+  // Set busy timeout to 30 seconds
+  db.pragma("busy_timeout = 30000")
   // Increase cache size
   db.pragma("cache_size = 10000")
 
@@ -45,9 +45,9 @@ try {
   if (!user) {
     console.error(`❌ User '${username}' not found in database`)
     console.log("\nAvailable users:")
-    const allUsers = db.prepare("SELECT username, is_admin FROM users").all()
+    const allUsers = db.prepare("SELECT username, role FROM users").all()
     allUsers.forEach(u => {
-      console.log(`  - ${u.username} ${u.is_admin ? '(admin)' : ''}`)
+      console.log(`  - ${u.username} ${u.role === 'admin' ? '(admin)' : ''}`)
     })
     process.exit(1)
   }

@@ -2,10 +2,6 @@
 
 echo "Starting Mail Delivery System..."
 
-# Start cleanup process in background
-echo "Starting cleanup service..."
-node scripts/cleanup-standalone.js &
-
 # Start SMTP server in background  
 echo "Starting SMTP server..."
 tsx lib/smtp-server.ts &
@@ -14,36 +10,36 @@ tsx lib/smtp-server.ts &
 echo "Starting web application..."
 npm start &
 
-# Wait for application and database to be ready
-echo "Waiting for database initialization..."
-sleep 8
+# Wait for Next.js to be fully ready
+echo "Waiting for Next.js to be ready..."
+sleep 10
 
-# Additional wait for WAL mode to be fully set up
-echo "Waiting for WAL mode initialization..."
-sleep 2
+# Now start cleanup after Next.js has initialized database
+echo "Starting cleanup service..."
+node scripts/cleanup-standalone.js &
 
-# Check if admin user exists, if not create default admin
-echo "Checking admin user..."
+# Additional wait for services to stabilize
+echo "Waiting for services to stabilize..."
+sleep 3
+
+# Create admin user in background (non-blocking)
 if [ ! -z "$ADMIN_USERNAME" ] && [ ! -z "$ADMIN_PASSWORD" ]; then
-  echo "Creating admin user: $ADMIN_USERNAME"
-  # Retry logic with exponential backoff
-  max_retries=3
-  retry_count=0
-  while [ $retry_count -lt $max_retries ]; do
-    if node scripts/create-admin.js "$ADMIN_USERNAME" "$ADMIN_PASSWORD"; then
-      break
-    fi
-    retry_count=$((retry_count + 1))
-    if [ $retry_count -lt $max_retries ]; then
-      echo "Retrying in 3 seconds... (attempt $((retry_count + 1))/$max_retries)"
-      sleep 3
+  echo "Scheduling admin user creation..."
+  (
+    # Wait a bit more for services to fully stabilize
+    sleep 5
+    echo "Creating admin user: $ADMIN_USERNAME"
+    if node scripts/create-admin.js "$ADMIN_USERNAME" "$ADMIN_PASSWORD" 2>&1; then
+      echo "✅ Admin user created successfully!"
     else
-      echo "⚠️  Admin creation failed after $max_retries attempts. You can create it manually later."
+      echo ""
+      echo "⚠️  Admin creation failed. Create it manually with:"
+      echo "   docker exec <container> node scripts/create-admin.js $ADMIN_USERNAME yourpassword"
     fi
-  done
+  ) &
 else
-  echo "⚠️  ADMIN_USERNAME and ADMIN_PASSWORD not set!"
-  echo "   To create admin user, run:"
+  echo "ℹ️  ADMIN_USERNAME and ADMIN_PASSWORD not set"
+  echo "   To create admin user later, run:"
   echo "   docker exec <container> node scripts/create-admin.js admin yourpassword"
 fi
 
@@ -55,7 +51,14 @@ echo ""
 echo "📧 SMTP Server: Port 25"
 echo "🌐 Web Interface: Port 80"
 echo ""
-echo "To reset admin password:"
+echo "🔧 Setup & Management:"
+echo "  • First time setup: http://localhost:80/setup"
+echo "  • Admin panel: http://localhost:80/admin"
+echo ""
+echo "🛠️  Manual admin creation:"
+echo "  docker exec <container> node scripts/create-admin.js admin yourpassword"
+echo ""
+echo "🔑 Reset admin password:"
 echo "  docker exec <container> node scripts/reset-admin-password.js admin newpassword"
 echo ""
 
