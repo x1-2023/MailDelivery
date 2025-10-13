@@ -1,60 +1,4 @@
-import { Database } from "./database"
-import { 
-  createTempEmail as createTempEmailDual, 
-  deleteTempEmail as deleteTempEmailDual, 
-  deleteExpiredTempEmails as deleteExpiredDual 
-} from "./temp-email-service"
-
-// Database singleton
-let db: Database | null = null
-let dbInitPromise: Promise<Database> | null = null
-
-async function getDb(): Promise<Database> {
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    throw new Error('Database not available during build')
-  }
-  
-  if (db) return db
-  
-  if (!dbInitPromise) {
-    dbInitPromise = (async () => {
-      const instance = new Database()
-      await instance.init()
-      db = instance
-      return instance
-    })()
-  }
-  
-  return dbInitPromise
-}
-
-// Retry helper for database busy errors
-async function retryOnBusy<T>(
-  operation: () => Promise<T>,
-  operationName: string,
-  maxRetries: number = 5,
-  baseDelay: number = 100
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation()
-    } catch (error: any) {
-      const isBusyError = error?.message?.includes('SQLITE_BUSY') || 
-                          error?.code === 'SQLITE_BUSY'
-      
-      if (!isBusyError || attempt === maxRetries) {
-        console.error(`${operationName} failed after ${attempt} attempts:`, error)
-        throw error
-      }
-      
-      const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 100
-      console.warn(`${operationName} - SQLITE_BUSY, retry ${attempt}/${maxRetries} after ${delay}ms`)
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-  }
-  
-  throw new Error(`${operationName} failed after ${maxRetries} retries`)
-}
+import { DatabaseService } from "./database"
 
 export interface TempEmail {
   email: string
@@ -86,21 +30,13 @@ export function generateRandomEmail(domain: string): string {
   return `${result}@${domain}`
 }
 
-/**
- * Create temp email - using dual-database service
- * WRITES to auth.db, can READ from both auth.db and emails.db
- * Supports both Anonymous (no userId) and Authenticated (with userId) modes
- */
 export async function createTempEmail(tempEmail: TempEmail): Promise<TempEmail> {
-  // Use dual-database service (WRITE to auth.db only)
-  const isAnonymous = !tempEmail.userId
-  createTempEmailDual(
-    tempEmail.email,
-    tempEmail.domain,
-    tempEmail.expiresAt,
-    tempEmail.userId || null,
-    isAnonymous ? 1 : 0
-  )
+  await retryOnBusy(async () => {
+    await (await getDb()).run(
+      "INSERT OR REPLACE INTO temp_emails (email, domain, expires_at, user_id, is_anonymous) VALUES (?, ?, ?, ?, ?)",
+      [tempEmail.email, tempEmail.domain, tempEmail.expiresAt, tempEmail.userId || null, tempEmail.userId ? 0 : 1],
+    )
+  }, `Create temp email ${tempEmail.email}`)
   
   return tempEmail
 }
@@ -170,8 +106,7 @@ export async function cleanupExpiredEmails(): Promise<void> {
 
   await (await getDb()).run("DELETE FROM emails WHERE timestamp < ?", [cutoffDate.toISOString()])
 
-  // Use dual-database service (deletes from auth.db only)
-  deleteExpiredDual()
+  await (await getDb()).run("DELETE FROM temp_emails WHERE expires_at < ?", [new Date().toISOString()])
 }
 
 function generateId(): string {
@@ -232,8 +167,8 @@ export async function deleteAllEmailsForAccount(email: string): Promise<number> 
   // Delete all emails for this account
   const result = await (await getDb()).run("DELETE FROM emails WHERE to_address = ?", [email])
 
-  // Delete temp email record - using dual-database service (deletes from auth.db only)
-  deleteTempEmailDual(email)
+  // Delete temp email record
+  await (await getDb()).run("DELETE FROM temp_emails WHERE email = ?", [email])
 
   return result.changes || 0
 }

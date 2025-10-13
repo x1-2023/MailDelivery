@@ -1,5 +1,4 @@
 import { Database } from "./database"
-import { deleteExpiredTempEmails } from "./temp-email-service"
 import fs from "fs"
 import path from "path"
 
@@ -147,8 +146,8 @@ export async function runManualCleanup(): Promise<{ deletedCount: number }> {
   // Delete old emails
   const result = await database.run("DELETE FROM emails WHERE timestamp < ?", [cutoffDate.toISOString()])
 
-  // Delete expired temp emails - using auth-database (in auth.db)
-  const tempEmailsDeleted = deleteExpiredTempEmails()
+  // Delete expired temp emails
+  await database.run("DELETE FROM temp_emails WHERE expires_at < ?", [new Date().toISOString()])
 
   // Delete orphaned attachments
   await database.run(`
@@ -156,7 +155,7 @@ export async function runManualCleanup(): Promise<{ deletedCount: number }> {
     WHERE email_id NOT IN (SELECT id FROM emails)
   `)
 
-  return { deletedCount: (result.changes || 0) + tempEmailsDeleted }
+  return { deletedCount: result.changes || 0 }
 }
 
 async function calculateStorageUsed(): Promise<string> {

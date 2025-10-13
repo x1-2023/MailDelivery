@@ -35,8 +35,15 @@ export class Database {
     await this.db.exec("PRAGMA temp_store = MEMORY;")
 
     // Create tables
-    // NOTE: temp_emails table moved to auth.db to avoid lock conflicts
-    
+    await this.db.exec(`
+      CREATE TABLE IF NOT EXISTS temp_emails (
+        email TEXT PRIMARY KEY,
+        domain TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
     await this.db.exec(`
       CREATE TABLE IF NOT EXISTS emails (
         id TEXT PRIMARY KEY,
@@ -81,6 +88,7 @@ export class Database {
     await this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_emails_to_address ON emails(to_address);
       CREATE INDEX IF NOT EXISTS idx_emails_timestamp ON emails(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_temp_emails_expires ON temp_emails(expires_at);
     `)
 
     // Create spam filter rules table
