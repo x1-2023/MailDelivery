@@ -19,7 +19,8 @@ try {
     fs.mkdirSync(dataDir, { recursive: true })
   }
 
-  const dbPath = path.join(dataDir, "emails.db")
+  // Use auth.db for user authentication
+  const dbPath = path.join(dataDir, "auth.db")
   
   if (!fs.existsSync(dbPath)) {
     console.error("❌ Database file not found at:", dbPath)

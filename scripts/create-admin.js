@@ -6,7 +6,8 @@ const crypto = require("crypto")
 
 // Wait for database file to exist
 async function waitForDatabase(maxRetries = 10, delayMs = 1000) {
-  const dbPath = path.join(process.cwd(), "data", "emails.db")
+  // Use auth.db for user authentication
+  const dbPath = path.join(process.cwd(), "data", "auth.db")
   const dataDir = path.dirname(dbPath)
   
   // Ensure data directory exists
@@ -102,7 +103,8 @@ async function createAdmin() {
     // Wait for database to be ready
     await waitForDatabase()
 
-    const dbPath = path.join(process.cwd(), "data", "emails.db")
+    // Use auth.db for user authentication
+    const dbPath = path.join(process.cwd(), "data", "auth.db")
     const db = new Database(dbPath, {
       timeout: 30000, // Wait up to 30 seconds for locks (longer for scripts)
       readonly: false,
