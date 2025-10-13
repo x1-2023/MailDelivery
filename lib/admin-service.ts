@@ -97,7 +97,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   }
 }
 
-export async function getAllEmailAccountsWithStats(): Promise<EmailAccount[]> {
+export async function getAllEmailAccountsWithStats(limit: number = 100, offset: number = 0): Promise<EmailAccount[]> {
   const database = await getDb()
   const accounts = await database.all(`
     SELECT 
@@ -108,7 +108,8 @@ export async function getAllEmailAccountsWithStats(): Promise<EmailAccount[]> {
     FROM emails 
     GROUP BY to_address 
     ORDER BY lastActivity DESC
-  `)
+    LIMIT ? OFFSET ?
+  `, [limit, offset])
 
   return accounts.map((account) => ({
     email: account.email,

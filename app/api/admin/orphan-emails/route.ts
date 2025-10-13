@@ -13,12 +13,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const orphanEmails = getOrphanEmails()
+    // Get limit from query params (default 50 for performance)
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '50')
+    
+    const orphanEmails = getOrphanEmails(limit)
 
     return NextResponse.json({
       success: true,
       emails: orphanEmails,
       count: orphanEmails.length,
+      limit: limit,
+      note: orphanEmails.length === limit ? 'Showing first ' + limit + ' orphan emails. May have more.' : null
     })
   } catch (error) {
     console.error("Error fetching orphan emails:", error)

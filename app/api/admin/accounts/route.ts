@@ -10,7 +10,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const accounts = await getAllEmailAccountsWithStats()
+    // Get pagination params
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '100')
+    const offset = parseInt(searchParams.get('offset') || '0')
+    
+    const accounts = await getAllEmailAccountsWithStats(limit, offset)
     return NextResponse.json(accounts)
   } catch (error) {
     console.error("Error fetching accounts:", error)

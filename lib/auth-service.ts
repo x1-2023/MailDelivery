@@ -286,24 +286,46 @@ export function getUserEmails(userId: string): any[] {
 
 /**
  * Get orphan emails (emails without user_id in temp_emails table)
+ * Checks BOTH auth.db and emails.db, returns limited results for performance
  */
-export function getOrphanEmails(): string[] {
+export function getOrphanEmails(limit: number = 50): string[] {
   try {
     const BetterSqlite3 = require("better-sqlite3")
     const path = require("path")
+    const orphanSet = new Set<string>()
     
-    const dbPath = process.env.NODE_ENV === "production"
-      ? "/var/www/opentrashmail/data/emails.db"
-      : path.join(process.cwd(), "data", "emails.db")
+    // Check auth.db first (NEW data)
+    const authDbPath = process.env.NODE_ENV === "production"
+      ? "/var/www/opentrashmail/data/auth.db"
+      : path.join(process.cwd(), "data", "auth.db")
     
-    const emailsDb = new BetterSqlite3(dbPath)
+    try {
+      const authDb = new BetterSqlite3(authDbPath, { readonly: true })
+      const authOrphans = authDb.prepare("SELECT email FROM temp_emails WHERE user_id IS NULL OR user_id = '' LIMIT ?").all(limit) as any[]
+      authOrphans.forEach((row: any) => orphanSet.add(row.email))
+      authDb.close()
+    } catch (error) {
+      console.warn("Could not check auth.db for orphans:", error)
+    }
     
-    // Get emails where user_id is NULL or empty
-    const orphanEmails = emailsDb.prepare("SELECT email FROM temp_emails WHERE user_id IS NULL OR user_id = ''").all() as any[]
+    // Check emails.db (OLD data) if we haven't reached limit
+    if (orphanSet.size < limit) {
+      const emailsDbPath = process.env.NODE_ENV === "production"
+        ? "/var/www/opentrashmail/data/emails.db"
+        : path.join(process.cwd(), "data", "emails.db")
+      
+      try {
+        const emailsDb = new BetterSqlite3(emailsDbPath, { readonly: true })
+        const remaining = limit - orphanSet.size
+        const emailsOrphans = emailsDb.prepare("SELECT email FROM temp_emails WHERE user_id IS NULL OR user_id = '' LIMIT ?").all(remaining) as any[]
+        emailsOrphans.forEach((row: any) => orphanSet.add(row.email))
+        emailsDb.close()
+      } catch (error) {
+        console.warn("Could not check emails.db for orphans:", error)
+      }
+    }
     
-    emailsDb.close()
-    
-    return orphanEmails.map((row) => row.email)
+    return Array.from(orphanSet)
   } catch (error) {
     console.error("Error getting orphan emails:", error)
     return []
