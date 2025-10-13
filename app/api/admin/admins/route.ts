@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/auth-middleware"
-import { Database } from "@/lib/database"
+import { authDb } from "@/lib/auth-database"
+import { createUser, getUserByUsername, listUsers, deleteUser } from "@/lib/auth-service"
 import bcrypt from "bcryptjs"
-
-let db: Database | null = null
-async function getDb() {
-  if (!db) {
-    db = new Database()
-    await (await getDb()).init()
-  }
-  return db
-}
 
 // GET - List all admins
 export async function GET(request: NextRequest) {
@@ -20,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const admins = await (await getDb()).all(`
+    const admins = authDb.prepare(`
       SELECT 
         id, 
         username, 
@@ -32,7 +24,7 @@ export async function GET(request: NextRequest) {
       FROM users 
       WHERE role = 'admin'
       ORDER BY created_at DESC
-    `)
+    `).all()
 
     return NextResponse.json({ 
       success: true, 
@@ -81,10 +73,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if username already exists
-    const existing = await (await getDb()).get(
-      "SELECT id FROM users WHERE username = ?",
-      [username]
-    )
+    const existing = authDb.prepare(
+      "SELECT id FROM users WHERE username = ?"
+    ).get(username)
 
     if (existing) {
       return NextResponse.json(
@@ -97,16 +88,15 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Insert new admin
-    const result = await (await getDb()).run(
+    const result = authDb.prepare(
       `INSERT INTO users (username, password, email, role, is_active, created_at) 
-       VALUES (?, ?, ?, ?, 1, datetime('now'))`,
-      [username, hashedPassword, email || null, role]
-    )
+       VALUES (?, ?, ?, ?, 1, datetime('now'))`
+    ).run(username, hashedPassword, email || null, role)
 
     return NextResponse.json({
       success: true,
       message: "Admin created successfully",
-      adminId: result.lastID,
+      adminId: result.lastInsertRowid,
     })
   } catch (error: any) {
     console.error("Failed to create admin:", error)
@@ -141,10 +131,9 @@ export async function PUT(request: NextRequest) {
 
     if (username) {
       // Check if new username is already taken by another admin
-      const existing = await (await getDb()).get(
-        "SELECT id FROM users WHERE username = ? AND id != ?",
-        [username, id]
-      )
+      const existing = authDb.prepare(
+        "SELECT id FROM users WHERE username = ? AND id != ?"
+      ).get(username, id)
       if (existing) {
         return NextResponse.json(
           { error: "Username already exists" },
@@ -187,10 +176,9 @@ export async function PUT(request: NextRequest) {
     updates.push("updated_at = datetime('now')")
     values.push(id)
 
-    await (await getDb()).run(
-      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
-      values
-    )
+    authDb.prepare(
+      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`
+    ).run(...values)
 
     return NextResponse.json({
       success: true,
@@ -224,9 +212,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if this is the last admin
-    const adminCount = await (await getDb()).get(
+    const adminCount = authDb.prepare(
       "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
-    )
+    ).get() as any
 
     if (adminCount.count <= 1) {
       return NextResponse.json(
@@ -244,7 +232,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await (await getDb()).run("DELETE FROM users WHERE id = ? AND role = 'admin'", [id])
+    authDb.prepare("DELETE FROM users WHERE id = ? AND role = 'admin'").run(id)
 
     return NextResponse.json({
       success: true,
@@ -288,9 +276,9 @@ export async function PATCH(request: NextRequest) {
 
     // Check if this is the last active admin
     if (!is_active) {
-      const activeCount = await (await getDb()).get(
+      const activeCount = authDb.prepare(
         "SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND is_active = 1"
-      )
+      ).get() as any
 
       if (activeCount.count <= 1) {
         return NextResponse.json(
@@ -300,10 +288,9 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    await (await getDb()).run(
-      "UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?",
-      [is_active ? 1 : 0, id]
-    )
+    authDb.prepare(
+      "UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?"
+    ).run(is_active ? 1 : 0, id)
 
     return NextResponse.json({
       success: true,
