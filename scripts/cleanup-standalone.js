@@ -28,17 +28,22 @@ function cleanupExpiredEmails() {
     const daysToKeep = parseInt(process.env.DELETE_OLDER_THAN_DAYS || "90", 10)
     
     // Delete old emails using SQLite datetime function
-    // Protect starred emails from deletion
+    // Protect: starred emails + keep newest email per account (preserve Active Accounts count)
     const deleteResult = db.prepare(`
       DELETE FROM emails 
       WHERE created_at < datetime('now', '-' || ? || ' days')
         AND starred = 0
+        AND id NOT IN (
+          SELECT MAX(id) 
+          FROM emails 
+          GROUP BY to_address
+        )
     `).run(daysToKeep)
 
     const deletedCount = deleteResult.changes
 
     if (deletedCount > 0) {
-      console.log(`✓ Cleanup completed: Deleted ${deletedCount} emails older than ${daysToKeep} days (kept starred emails)`)
+      console.log(`✓ Cleanup completed: Deleted ${deletedCount} emails older than ${daysToKeep} days (kept starred + newest per account)`)
     } else {
       console.log(`✓ Cleanup completed: No emails older than ${daysToKeep} days to delete`)
     }

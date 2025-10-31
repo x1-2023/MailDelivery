@@ -144,15 +144,20 @@ export async function runManualCleanup(): Promise<{ deletedCount: number }> {
   const deleteOlderThanDays = Number.parseInt(process.env.DELETE_OLDER_THAN_DAYS || "90")
 
   // Delete old emails using SQLite datetime function
-  // Protect starred emails from deletion
+  // Protect: starred emails + keep newest email per account
   const result = await database.run(
     `DELETE FROM emails 
      WHERE created_at < datetime('now', '-' || ? || ' days')
-       AND starred = 0`,
+       AND starred = 0
+       AND id NOT IN (
+         SELECT MAX(id) 
+         FROM emails 
+         GROUP BY to_address
+       )`,
     [deleteOlderThanDays]
   )
 
-  console.log(`🗑️ Deleted ${result.changes || 0} emails older than ${deleteOlderThanDays} days`)
+  console.log(`🗑️ Deleted ${result.changes || 0} emails older than ${deleteOlderThanDays} days (kept starred + newest per account)`)
 
   // Delete expired temp emails - using auth-database (in auth.db)
   const tempEmailsDeleted = deleteExpiredTempEmails()
