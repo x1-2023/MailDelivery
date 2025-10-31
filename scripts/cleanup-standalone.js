@@ -24,26 +24,23 @@ function cleanupExpiredEmails() {
     // Increase cache size
     db.pragma("cache_size = 10000")
     
-    // Get DELETE_OLDER_THAN_DAYS from env or default to 1 day
-    const daysToKeep = parseInt(process.env.DELETE_OLDER_THAN_DAYS || "1", 10)
+    // Get DELETE_OLDER_THAN_DAYS from env or default to 90 days
+    const daysToKeep = parseInt(process.env.DELETE_OLDER_THAN_DAYS || "90", 10)
     
-    // Calculate cutoff date
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
-    const cutoffTimestamp = cutoffDate.getTime()
-
-    // Delete old emails
+    // Delete old emails using SQLite datetime function
+    // Protect starred emails from deletion
     const deleteResult = db.prepare(`
       DELETE FROM emails 
-      WHERE created_at < ?
-    `).run(cutoffTimestamp)
+      WHERE created_at < datetime('now', '-' || ? || ' days')
+        AND starred = 0
+    `).run(daysToKeep)
 
     const deletedCount = deleteResult.changes
 
     if (deletedCount > 0) {
-      console.log(`✓ Cleanup completed: Deleted ${deletedCount} emails older than ${daysToKeep} days`)
+      console.log(`✓ Cleanup completed: Deleted ${deletedCount} emails older than ${daysToKeep} days (kept starred emails)`)
     } else {
-      console.log(`✓ Cleanup completed: No old emails to delete`)
+      console.log(`✓ Cleanup completed: No emails older than ${daysToKeep} days to delete`)
     }
 
     // Vacuum database to reclaim space
