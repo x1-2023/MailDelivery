@@ -25,6 +25,8 @@ export class Database {
       driver: sqlite3.Database,
     })
 
+    // Enable foreign keys FIRST - CRITICAL for CASCADE DELETE!
+    await this.db.exec("PRAGMA foreign_keys = ON;")
     // Enable WAL mode for better concurrent access
     await this.db.exec("PRAGMA journal_mode = WAL;")
     // Set busy timeout to 30 seconds (increased for high load)
@@ -74,8 +76,12 @@ export class Database {
       .exec(`
       ALTER TABLE emails ADD COLUMN raw TEXT;
     `)
-      .catch(() => {
-        // Column might already exist, ignore error
+      .catch((error: any) => {
+        // Only ignore "duplicate column" errors
+        if (!error.message?.includes('duplicate column')) {
+          console.error('Failed to add raw column:', error)
+          throw error
+        }
       })
 
     await this.db.exec(`
@@ -104,16 +110,24 @@ export class Database {
       .exec(`
       ALTER TABLE emails ADD COLUMN spam_filtered INTEGER DEFAULT 0;
     `)
-      .catch(() => {
-        // Column might already exist, ignore error
+      .catch((error: any) => {
+        // Only ignore "duplicate column" errors
+        if (!error.message?.includes('duplicate column')) {
+          console.error('Failed to add spam_filtered column:', error)
+          throw error
+        }
       })
 
     await this.db
       .exec(`
       ALTER TABLE emails ADD COLUMN auto_delete_at TEXT;
     `)
-      .catch(() => {
-        // Column might already exist, ignore error
+      .catch((error: any) => {
+        // Only ignore "duplicate column" errors
+        if (!error.message?.includes('duplicate column')) {
+          console.error('Failed to add auto_delete_at column:', error)
+          throw error
+        }
       })
 
     await this.db.exec(`

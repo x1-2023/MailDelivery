@@ -143,32 +143,48 @@ export async function runManualCleanup(): Promise<{ deletedCount: number }> {
   const database = await getDb()
   const deleteOlderThanDays = Number.parseInt(process.env.DELETE_OLDER_THAN_DAYS || "90")
 
-  // Delete old emails using SQLite datetime function
-  // Protect: starred emails + keep newest email per account
-  const result = await database.run(
-    `DELETE FROM emails 
-     WHERE created_at < datetime('now', '-' || ? || ' days')
-       AND starred = 0
-       AND id NOT IN (
-         SELECT MAX(id) 
-         FROM emails 
-         GROUP BY to_address
-       )`,
-    [deleteOlderThanDays]
-  )
+  // Use transaction for atomic cleanup
+  await database.run('BEGIN IMMEDIATE TRANSACTION')
+  
+  try {
+    // Delete old emails using SQLite datetime function
+    // Protect: starred emails + keep newest email per account
+    const result = await database.run(
+      `DELETE FROM emails 
+       WHERE created_at < datetime('now', '-' || ? || ' days')
+         AND starred = 0
+         AND id NOT IN (
+           SELECT MAX(id) 
+           FROM emails 
+           GROUP BY to_address
+         )`,
+      [deleteOlderThanDays]
+    )
 
-  console.log(`🗑️ Deleted ${result.changes || 0} emails older than ${deleteOlderThanDays} days (kept starred + newest per account)`)
+    console.log(`🗑️ Deleted ${result.changes || 0} emails older than ${deleteOlderThanDays} days (kept starred + newest per account)`)
 
-  // Delete expired temp emails - using auth-database (in auth.db)
-  const tempEmailsDeleted = deleteExpiredTempEmails()
+    // Delete orphaned attachments (shouldn't exist if foreign keys enabled, but cleanup anyway)
+    const orphanedResult = await database.run(`
+      DELETE FROM attachments 
+      WHERE email_id NOT IN (SELECT id FROM emails)
+    `)
+    
+    if ((orphanedResult.changes || 0) > 0) {
+      console.log(`🗑️ Cleaned up ${orphanedResult.changes} orphaned attachments`)
+    }
 
-  // Delete orphaned attachments
-  await database.run(`
-    DELETE FROM attachments 
-    WHERE email_id NOT IN (SELECT id FROM emails)
-  `)
-
-  return { deletedCount: (result.changes || 0) + tempEmailsDeleted }
+    await database.run('COMMIT')
+    
+    // Delete expired temp emails - using auth-database (in auth.db)
+    // NOTE: This is in separate database, cannot be in same transaction
+    const tempEmailsDeleted = deleteExpiredTempEmails()
+    
+    return { deletedCount: (result.changes || 0) + tempEmailsDeleted }
+  } catch (error) {
+    await database.run('ROLLBACK')
+    console.error('Cleanup failed, rolled back:', error)
+    throw error
+  }
 }
 
 async function calculateStorageUsed(): Promise<string> {

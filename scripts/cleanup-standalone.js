@@ -17,6 +17,8 @@ function cleanupExpiredEmails() {
       readonly: false
     })
     
+    // CRITICAL: Enable foreign keys FIRST for CASCADE DELETE
+    db.pragma("foreign_keys = ON")
     // Enable WAL mode for better concurrent access
     db.pragma("journal_mode = WAL")
     // Set busy timeout to 30 seconds
@@ -27,32 +29,57 @@ function cleanupExpiredEmails() {
     // Get DELETE_OLDER_THAN_DAYS from env or default to 90 days
     const daysToKeep = parseInt(process.env.DELETE_OLDER_THAN_DAYS || "90", 10)
     
-    // Delete old emails using SQLite datetime function
-    // Protect: starred emails + keep newest email per account (preserve Active Accounts count)
-    const deleteResult = db.prepare(`
-      DELETE FROM emails 
-      WHERE created_at < datetime('now', '-' || ? || ' days')
-        AND starred = 0
-        AND id NOT IN (
-          SELECT MAX(id) 
-          FROM emails 
-          GROUP BY to_address
-        )
-    `).run(daysToKeep)
+    // Use transaction for atomic cleanup
+    db.prepare('BEGIN IMMEDIATE TRANSACTION').run()
+    
+    try {
+      // Delete old emails using SQLite datetime function
+      // Protect: starred emails + keep newest email per account (preserve Active Accounts count)
+      const deleteResult = db.prepare(`
+        DELETE FROM emails 
+        WHERE created_at < datetime('now', '-' || ? || ' days')
+          AND starred = 0
+          AND id NOT IN (
+            SELECT MAX(id) 
+            FROM emails 
+            GROUP BY to_address
+          )
+      `).run(daysToKeep)
 
-    const deletedCount = deleteResult.changes
+      const deletedCount = deleteResult.changes
+      
+      // Clean up orphaned attachments (shouldn't exist if foreign keys work, but cleanup anyway)
+      const orphanedResult = db.prepare(`
+        DELETE FROM attachments 
+        WHERE email_id NOT IN (SELECT id FROM emails)
+      `).run()
+      
+      if (orphanedResult.changes > 0) {
+        console.log(`✓ Cleaned up ${orphanedResult.changes} orphaned attachments`)
+      }
+      
+      db.prepare('COMMIT').run()
 
-    if (deletedCount > 0) {
-      console.log(`✓ Cleanup completed: Deleted ${deletedCount} emails older than ${daysToKeep} days (kept starred + newest per account)`)
-    } else {
-      console.log(`✓ Cleanup completed: No emails older than ${daysToKeep} days to delete`)
+      if (deletedCount > 0) {
+        console.log(`✓ Cleanup completed: Deleted ${deletedCount} emails older than ${daysToKeep} days (kept starred + newest per account)`)
+      } else {
+        console.log(`✓ Cleanup completed: No emails older than ${daysToKeep} days to delete`)
+      }
+
+      // Vacuum database to reclaim space
+      db.exec("VACUUM")
+      console.log("✓ Database optimized")
+
+      db.close()
+    } catch (error) {
+      db.prepare('ROLLBACK').run()
+      console.error("✗ Cleanup error, rolled back:", error.message)
+      try {
+        db.close()
+      } catch (e) {
+        // ignore
+      }
     }
-
-    // Vacuum database to reclaim space
-    db.exec("VACUUM")
-    console.log("✓ Database optimized")
-
-    db.close()
   } catch (error) {
     console.error("✗ Cleanup error:", error.message)
   }

@@ -152,15 +152,29 @@ export async function saveIncomingEmail(email: Omit<Email, "id">): Promise<void>
 }
 
 export async function deleteEmail(id: string): Promise<void> {
-  await (await getDb()).run("DELETE FROM emails WHERE id = ?", [id])
+  await retryOnBusy(async () => {
+    const db = await getDb()
+    await db.run('BEGIN IMMEDIATE TRANSACTION')
+    try {
+      await db.run("DELETE FROM emails WHERE id = ?", [id])
+      await db.run('COMMIT')
+    } catch (error) {
+      await db.run('ROLLBACK')
+      throw error
+    }
+  }, `Delete email ${id}`)
 }
 
 export async function markEmailAsRead(id: string): Promise<void> {
-  await (await getDb()).run("UPDATE emails SET read = 1 WHERE id = ?", [id])
+  await retryOnBusy(async () => {
+    await (await getDb()).run("UPDATE emails SET read = 1 WHERE id = ?", [id])
+  }, `Mark email ${id} as read`)
 }
 
 export async function toggleEmailStar(id: string, starred: boolean): Promise<void> {
-  await (await getDb()).run("UPDATE emails SET starred = ? WHERE id = ?", [starred ? 1 : 0, id])
+  await retryOnBusy(async () => {
+    await (await getDb()).run("UPDATE emails SET starred = ? WHERE id = ?", [starred ? 1 : 0, id])
+  }, `Toggle star for email ${id}`)
 }
 
 export async function cleanupExpiredEmails(): Promise<void> {
@@ -211,31 +225,52 @@ export async function getEmailAttachment(
 }
 
 export async function deleteSpecificEmail(email: string, id: string): Promise<boolean> {
-  // Delete attachments first
-  await (await getDb()).run("DELETE FROM attachments WHERE email_id = ?", [id])
-
-  // Delete email
-  const result = await (await getDb()).run("DELETE FROM emails WHERE to_address = ? AND id = ?", [email, id])
-
-  return (result.changes || 0) > 0
+  return await retryOnBusy(async () => {
+    const db = await getDb()
+    
+    // Use transaction to ensure atomicity
+    await db.run('BEGIN IMMEDIATE TRANSACTION')
+    
+    try {
+      // Delete email (attachments will CASCADE delete automatically)
+      const result = await db.run("DELETE FROM emails WHERE to_address = ? AND id = ?", [email, id])
+      
+      await db.run('COMMIT')
+      
+      return (result.changes || 0) > 0
+    } catch (error) {
+      await db.run('ROLLBACK')
+      console.error(`Failed to delete email ${id}:`, error)
+      throw error
+    }
+  }, `Delete specific email ${id} for ${email}`)
 }
 
 export async function deleteAllEmailsForAccount(email: string): Promise<number> {
-  // Get all email IDs for this account
-  const emailIds = await (await getDb()).all("SELECT id FROM emails WHERE to_address = ?", [email])
-
-  // Delete all attachments for these emails
-  for (const emailRow of emailIds) {
-    await (await getDb()).run("DELETE FROM attachments WHERE email_id = ?", [emailRow.id])
-  }
-
-  // Delete all emails for this account
-  const result = await (await getDb()).run("DELETE FROM emails WHERE to_address = ?", [email])
-
-  // Delete temp email record - using dual-database service (deletes from auth.db only)
-  deleteTempEmailDual(email)
-
-  return result.changes || 0
+  return await retryOnBusy(async () => {
+    const db = await getDb()
+    
+    // Use transaction to ensure atomicity
+    await db.run('BEGIN IMMEDIATE TRANSACTION')
+    
+    try {
+      // Delete all emails for this account
+      // Attachments will be deleted automatically by CASCADE (if foreign_keys enabled)
+      const result = await db.run("DELETE FROM emails WHERE to_address = ?", [email])
+      
+      // Delete temp email record - using dual-database service (deletes from auth.db only)
+      // NOTE: This is in separate database, cannot be in same transaction
+      deleteTempEmailDual(email)
+      
+      await db.run('COMMIT')
+      
+      return result.changes || 0
+    } catch (error) {
+      await db.run('ROLLBACK')
+      console.error(`Failed to delete account ${email}:`, error)
+      throw error
+    }
+  }, `Delete all emails for account ${email}`)
 }
 
 export async function getEmailsForAddressWithAttachments(email: string): Promise<(Email & { attachments?: any[] })[]> {
