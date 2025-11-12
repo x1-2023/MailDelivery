@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/components/auth-provider'
 import { Toaster } from '@/components/ui/toaster'
+import { AnnouncementPopup } from '@/components/announcement-popup'
 
 export const metadata: Metadata = {
   title: 'Mail Delivery System',
@@ -20,6 +21,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <Toaster />
+          <AnnouncementPopup />
         </AuthProvider>
       </body>
     </html>
