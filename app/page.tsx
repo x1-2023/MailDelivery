@@ -1287,12 +1287,13 @@ export default function TrashMailApp() {
       {/* Donate Popup - Controlled by button */}
       {showDonatePopup && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto"
+          className="fixed inset-0 bg-black/50 z-50 overflow-y-auto overscroll-contain"
           onClick={() => setShowDonatePopup(false)}
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <div className="w-full min-h-screen flex items-center justify-center p-2 sm:p-4">
+          <div className="min-h-screen w-full flex items-center justify-center p-2 sm:p-4 py-8">
             <div 
-              className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl max-w-3xl w-full my-4 sm:my-8 border-2 sm:border-4 border-yellow-400 dark:border-yellow-600"
+              className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl max-w-3xl w-full border-2 sm:border-4 border-yellow-400 dark:border-yellow-600"
               onClick={(e) => e.stopPropagation()}
             >
             {/* Header */}
