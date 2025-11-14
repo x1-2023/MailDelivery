@@ -1287,16 +1287,16 @@ export default function TrashMailApp() {
       {/* Donate Popup - Controlled by button */}
       {showDonatePopup && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50 overflow-y-auto"
+          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto"
           onClick={() => setShowDonatePopup(false)}
         >
-          <div className="min-h-screen flex items-center justify-center p-2 sm:p-4">
+          <div className="w-full min-h-screen flex items-center justify-center p-2 sm:p-4">
             <div 
-              className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl max-w-3xl w-full my-4 sm:my-8 border-2 sm:border-4 border-yellow-400 dark:border-yellow-600 max-h-[95vh] overflow-y-auto"
+              className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl max-w-3xl w-full my-4 sm:my-8 border-2 sm:border-4 border-yellow-400 dark:border-yellow-600"
               onClick={(e) => e.stopPropagation()}
             >
             {/* Header */}
-            <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 dark:from-yellow-600 dark:via-orange-600 dark:to-red-600 p-3 sm:p-6 text-center relative sticky top-0 z-10">
+            <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 dark:from-yellow-600 dark:via-orange-600 dark:to-red-600 p-3 sm:p-6 text-center relative">
               <button
                 onClick={() => setShowDonatePopup(false)}
                 className="absolute right-2 top-2 sm:right-4 sm:top-4 rounded-full p-1.5 bg-white/20 hover:bg-white/30 transition-colors"
