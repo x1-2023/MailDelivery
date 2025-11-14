@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast"
 import UserManagement from "@/components/user-management"
 import SpamFiltersManager from "@/components/spam-filters-manager"
 import AdminManagement from "@/components/admin-management"
+import { AnnouncementManager } from "@/components/announcement-manager"
 
 interface AdminStats {
   totalEmails: number
@@ -456,7 +457,7 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 dark:bg-gray-800">
+          <TabsList className="grid w-full grid-cols-8 dark:bg-gray-800">
             <TabsTrigger value="dashboard" className="dark:data-[state=active]:bg-gray-700">
               Dashboard
             </TabsTrigger>
@@ -465,6 +466,9 @@ export default function AdminPanel() {
             </TabsTrigger>
             <TabsTrigger value="emails" className="dark:data-[state=active]:bg-gray-700">
               Email Management
+            </TabsTrigger>
+            <TabsTrigger value="announcements" className="dark:data-[state=active]:bg-gray-700">
+              Announcements
             </TabsTrigger>
             <TabsTrigger value="spam-filters" className="dark:data-[state=active]:bg-gray-700">
               <Shield className="h-4 w-4 mr-2" />
@@ -484,6 +488,10 @@ export default function AdminPanel() {
 
           <TabsContent value="users" className="space-y-6">
             <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="announcements" className="space-y-6">
+            <AnnouncementManager />
           </TabsContent>
 
           <TabsContent value="spam-filters" className="space-y-6">

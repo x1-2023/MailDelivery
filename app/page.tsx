@@ -20,6 +20,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import Link from "next/link"
+import { AnnouncementBanner } from "@/components/announcement-banner"
+import { AvailableDomains } from "@/components/available-domains"
 import {
   Mail,
   Inbox,
@@ -37,6 +39,9 @@ import {
   Check,
   ChevronsUpDown,
   Timer,
+  Heart,
+  X,
+  AlertTriangle,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
@@ -72,6 +77,27 @@ export default function TrashMailApp() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [emailSelectorOpen, setEmailSelectorOpen] = useState(false)
   const [emailSearchQuery, setEmailSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [emailsPerPage] = useState(10)
+  const [showDonatePopup, setShowDonatePopup] = useState(false)
+  const [availableDomains, setAvailableDomains] = useState<string[]>(["0xf5.site"])
+  const [selectedDomain, setSelectedDomain] = useState<string>("0xf5.site")
+
+  // Fetch available domains
+  const fetchDomains = async () => {
+    try {
+      const response = await fetch('/api/domains')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.domains && data.domains.length > 0) {
+          setAvailableDomains(data.domains)
+          setSelectedDomain(data.domains[0])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch domains:', error)
+    }
+  }
 
   // Check authentication (optional - allow anonymous)
   const checkAuth = async () => {
@@ -113,21 +139,28 @@ export default function TrashMailApp() {
   }
 
   // Generate custom email
-  const generateCustomEmail = async (customAddress?: string) => {
+  const generateCustomEmail = async (customAddress?: string, domain?: string) => {
     setLoading(true)
     try {
+      // If full email provided, use it. Otherwise construct with selected domain
+      let emailToCreate = customAddress
+      if (customAddress && !customAddress.includes("@")) {
+        const domainToUse = domain || selectedDomain
+        emailToCreate = `${customAddress}@${domainToUse}`
+      }
+      
       const response = await fetch("/api/email/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ customEmail: customAddress }),
+        body: JSON.stringify({ customEmail: emailToCreate }),
       })
       
       if (!response.ok) {
         const error = await response.json()
         toast({
-          title: "Error",
-          description: error.error || "Failed to create email. It may already be in use by another user.",
+          title: "Lỗi",
+          description: error.error || "Không thể tạo email. Email này có thể đã được sử dụng bởi người khác.",
           variant: "destructive",
         })
         setLoading(false)
@@ -137,6 +170,9 @@ export default function TrashMailApp() {
       const data = await response.json()
       setCurrentEmail(data)
       
+      // Save to localStorage
+      localStorage.setItem('temp-email', JSON.stringify(data))
+      
       // Add to myEmails list if not already there
       if (!myEmails.find((e) => e.email === data.email)) {
         setMyEmails([...myEmails, data])
@@ -145,15 +181,15 @@ export default function TrashMailApp() {
       setEmails([])
       setSelectedEmail(null)
       toast({
-        title: "Email created!",
-        description: `Your email: ${data.email}`,
+        title: "Đã tạo email!",
+        description: `Email của bạn: ${data.email}`,
       })
       setLoading(false)
       return true
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create email",
+        title: "Lỗi",
+        description: "Không thể tạo email",
         variant: "destructive",
       })
       setLoading(false)
@@ -178,12 +214,10 @@ export default function TrashMailApp() {
     }
 
     // Create new email with custom address
-    // If user types full email, use it. Otherwise append domain
+    // If user types full email, use it. Otherwise append selected domain
     let customAddress = searchQuery
     if (!customAddress.includes("@")) {
-      // Get domain from current email or use default
-      const domain = currentEmail?.domain || "0xf5.site"
-      customAddress = `${customAddress}@${domain}`
+      customAddress = `${customAddress}@${selectedDomain}`
     }
 
     const success = await generateCustomEmail(customAddress)
@@ -325,6 +359,17 @@ export default function TrashMailApp() {
     return matchesSearch
   })
 
+  // Pagination
+  const totalPages = Math.ceil(filteredEmails.length / emailsPerPage)
+  const startIndex = (currentPage - 1) * emailsPerPage
+  const endIndex = startIndex + emailsPerPage
+  const paginatedEmails = filteredEmails.slice(startIndex, endIndex)
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, view])
+
   useEffect(() => {
     if (currentEmail) {
       fetchEmails()
@@ -337,8 +382,24 @@ export default function TrashMailApp() {
   useEffect(() => {
     const initAuth = async () => {
       const authenticated = await checkAuth()
-      // Generate email for both authenticated and anonymous users
-      generateEmail()
+      await fetchDomains()
+      
+      // Check localStorage for saved email first
+      const savedEmail = localStorage.getItem('temp-email')
+      if (savedEmail) {
+        try {
+          const emailData = JSON.parse(savedEmail)
+          setCurrentEmail(emailData)
+          if (!myEmails.find((e) => e.email === emailData.email)) {
+            setMyEmails([emailData])
+          }
+        } catch (e) {
+          // If parse fails, generate new email
+          // Don't auto-generate, wait for user action
+        }
+      }
+      // Don't auto-generate email anymore
+      // User must click "Random" button to create email
     }
     initAuth()
   }, [])
@@ -501,6 +562,12 @@ export default function TrashMailApp() {
         </div>
       </header>
 
+      {/* System Announcement Banner */}
+      <AnnouncementBanner />
+
+      {/* Available Domains Banner */}
+      <AvailableDomains />
+
       {/* Anonymous Mode Notice */}
       {!currentUser && currentEmail && (
         <div className="max-w-6xl mx-auto px-4 pt-4">
@@ -535,10 +602,10 @@ export default function TrashMailApp() {
             {/* Custom Email Input for Anonymous Users */}
             <div className="max-w-2xl mx-auto mb-6">
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
+                <div className="flex-1 flex gap-2">
                   <input
                     type="text"
-                    placeholder="Enter custom email (e.g., myname or myname@domain.com)"
+                    placeholder="Enter custom email (e.g., myname)"
                     value={emailSearchQuery}
                     onChange={(e) => setEmailSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -547,12 +614,29 @@ export default function TrashMailApp() {
                         createEmailFromSearch(emailSearchQuery.trim())
                       }
                     }}
-                    className={`w-full px-4 py-3 rounded-lg border-2 text-base font-mono ${
+                    className={`flex-1 px-4 py-3 rounded-lg border-2 text-base font-mono ${
                       darkMode 
                         ? "bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500" 
                         : "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
                     } focus:outline-none transition-colors`}
                   />
+                  {availableDomains.length > 1 && (
+                    <select
+                      value={selectedDomain}
+                      onChange={(e) => setSelectedDomain(e.target.value)}
+                      className={`px-3 py-3 rounded-lg border-2 text-base font-mono ${
+                        darkMode 
+                          ? "bg-gray-800 border-gray-600 text-white focus:border-blue-500" 
+                          : "bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                      } focus:outline-none transition-colors`}
+                    >
+                      {availableDomains.map((domain) => (
+                        <option key={domain} value={domain}>
+                          @{domain}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <Button
                   size="lg"
@@ -761,7 +845,14 @@ export default function TrashMailApp() {
                       variant="outline"
                       className={darkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
                     >
-                      <Refresh className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+                      {loading ? (
+                        <Refresh className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Refresh className="h-5 w-5 mr-2" />
+                          Random
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -886,74 +977,136 @@ export default function TrashMailApp() {
                     </p>
                   </div>
                 ) : (
-                  <div className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-                    {filteredEmails.map((email) => (
-                      <div
-                        key={email.id}
-                        className={`p-4 cursor-pointer transition-all ${
-                          selectedEmail?.id === email.id
-                            ? darkMode
-                              ? "bg-gray-700 border-l-4 border-blue-500"
-                              : "bg-blue-50 border-l-4 border-blue-500"
-                            : darkMode
-                              ? "hover:bg-gray-700"
-                              : "hover:bg-gray-50"
-                        } ${!email.read ? (darkMode ? "bg-gray-750" : "bg-blue-25") : ""}`}
-                        onClick={() => {
-                          setSelectedEmail(email)
-                          if (!email.read) {
-                            markAsRead(email.id)
-                          }
-                        }}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center space-x-2 flex-1 min-w-0">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                              {email.from.charAt(0).toUpperCase()}
+                  <>
+                    <div className={`divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
+                      {paginatedEmails.map((email) => (
+                        <div
+                          key={email.id}
+                          className={`p-4 cursor-pointer transition-all ${
+                            selectedEmail?.id === email.id
+                              ? darkMode
+                                ? "bg-gray-700 border-l-4 border-blue-500"
+                                : "bg-blue-50 border-l-4 border-blue-500"
+                              : darkMode
+                                ? "hover:bg-gray-700"
+                                : "hover:bg-gray-50"
+                          } ${!email.read ? (darkMode ? "bg-gray-750" : "bg-blue-25") : ""}`}
+                          onClick={() => {
+                            setSelectedEmail(email)
+                            if (!email.read) {
+                              markAsRead(email.id)
+                            }
+                          }}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                                {email.from.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm truncate ${!email.read ? "font-semibold" : "font-medium"}`}>
+                                  {email.from}
+                                </div>
+                                <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                                  to {email.to}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className={`text-sm truncate ${!email.read ? "font-semibold" : "font-medium"}`}>
-                                {email.from}
-                              </div>
-                              <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                                to {email.to}
-                              </div>
+                            <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleStar(email.id)
+                                }}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Star
+                                  className={`h-3 w-3 ${email.starred ? "fill-yellow-400 text-yellow-400" : darkMode ? "text-gray-400" : "text-gray-400"}`}
+                                />
+                              </Button>
+                              <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                                {formatTime(email.timestamp)}
+                              </span>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+
+                          <div className={`text-sm mb-1 ${!email.read ? "font-medium" : ""}`}>
+                            {email.subject || "(No subject)"}
+                          </div>
+
+                          <div className={`text-sm line-clamp-2 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                            {email.body.replace(/<[^>]*>/g, "").substring(0, 100)}...
+                          </div>
+
+                          {!email.read && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 animate-pulse"></div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Pagination Controls */}
+                    {filteredEmails.length > emailsPerPage && (
+                      <div className={`border-t p-4 ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+                        <div className="flex items-center justify-between">
+                          <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                            Showing {startIndex + 1}-{Math.min(endIndex, filteredEmails.length)} of {filteredEmails.length} emails
+                          </div>
+                          <div className="flex items-center gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleStar(email.id)
-                              }}
-                              className="h-6 w-6 p-0"
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className={darkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
                             >
-                              <Star
-                                className={`h-3 w-3 ${email.starred ? "fill-yellow-400 text-yellow-400" : darkMode ? "text-gray-400" : "text-gray-400"}`}
-                              />
+                              Previous
                             </Button>
-                            <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                              {formatTime(email.timestamp)}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter(page => {
+                                  // Show first, last, current, and adjacent pages
+                                  return page === 1 || 
+                                         page === totalPages || 
+                                         Math.abs(page - currentPage) <= 1
+                                })
+                                .map((page, idx, arr) => (
+                                  <div key={page} className="flex items-center">
+                                    {idx > 0 && arr[idx - 1] !== page - 1 && (
+                                      <span className={`px-2 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>...</span>
+                                    )}
+                                    <Button
+                                      variant={page === currentPage ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => setCurrentPage(page)}
+                                      className={page === currentPage 
+                                        ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 min-w-[2.5rem]"
+                                        : darkMode 
+                                          ? "border-gray-600 text-gray-300 hover:bg-gray-700 min-w-[2.5rem]" 
+                                          : "min-w-[2.5rem]"
+                                      }
+                                    >
+                                      {page}
+                                    </Button>
+                                  </div>
+                                ))}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages}
+                              className={darkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
+                            >
+                              Next
+                            </Button>
                           </div>
                         </div>
-
-                        <div className={`text-sm mb-1 ${!email.read ? "font-medium" : ""}`}>
-                          {email.subject || "(No subject)"}
-                        </div>
-
-                        <div className={`text-sm line-clamp-2 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                          {email.body.replace(/<[^>]*>/g, "").substring(0, 100)}...
-                        </div>
-
-                        {!email.read && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 animate-pulse"></div>
-                        )}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </ScrollArea>
             </div>
@@ -1054,12 +1207,141 @@ export default function TrashMailApp() {
 
       {/* Footer */}
       <footer className={`mt-16 py-8 border-t ${darkMode ? "border-gray-700 bg-gray-900" : "border-gray-200 bg-white"}`}>
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-            © 2024 MailDelivery. Protect your privacy with temporary email addresses.
-          </p>
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <Button
+              onClick={() => setShowDonatePopup(true)}
+              size="lg"
+              className="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-semibold px-8 shadow-lg hover:shadow-xl transition-all"
+            >
+              <Heart className="h-5 w-5 mr-2 animate-pulse" />
+              Donate / Ủng Hộ
+              <Heart className="h-5 w-5 ml-2 animate-pulse" />
+            </Button>
+            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+              © 2024 MailDelivery. Protect your privacy with temporary email addresses.
+            </p>
+          </div>
         </div>
       </footer>
+
+      {/* Donate Popup - Controlled by button */}
+      {showDonatePopup && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowDonatePopup(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border-4 border-yellow-400 dark:border-yellow-600"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 dark:from-yellow-600 dark:via-orange-600 dark:to-red-600 p-6 text-center relative">
+              <button
+                onClick={() => setShowDonatePopup(false)}
+                className="absolute right-4 top-4 rounded-full p-1 bg-white/20 hover:bg-white/30 transition-colors"
+              >
+                <X className="h-5 w-5 text-white" />
+              </button>
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <AlertTriangle className="h-10 w-10 text-white animate-pulse" />
+                <h2 className="text-3xl md:text-4xl font-black text-white uppercase tracking-wider">
+                  THÔNG BÁO QUAN TRỌNG
+                </h2>
+                <AlertTriangle className="h-10 w-10 text-white animate-pulse" />
+              </div>
+              <p className="text-white/90 text-lg font-semibold">
+                Vui lòng đọc kỹ thông tin bên dưới
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 space-y-6">
+              {/* Free Service Notice */}
+              <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-400 dark:border-red-800 rounded-lg p-6">
+                <div className="flex items-start gap-4">
+                  <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="text-2xl font-bold text-red-700 dark:text-red-400 mb-3">
+                      🚫 NGHIÊM CẤM MUA BÁN 🚫
+                    </h3>
+                    <p className="text-lg font-semibold text-red-800 dark:text-red-300 leading-relaxed">
+                      Tất cả email trên website đều là <span className="text-2xl font-black">MIỄN PHÍ</span>
+                      <br />
+                      Nghiêm cấm hành vi kinh doanh mua bán dưới mọi hình thức!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Donate Section */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-2 border-green-400 dark:border-green-700 rounded-lg p-6">
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <Heart className="h-8 w-8 text-red-500 animate-pulse" />
+                    <h3 className="text-2xl font-bold text-green-700 dark:text-green-400">
+                      Ủng Hộ Dự Án
+                    </h3>
+                    <Heart className="h-8 w-8 text-red-500 animate-pulse" />
+                  </div>
+                  
+                  <p className="text-lg text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                    Nếu anh em yêu quý thì donate vào tài khoản bên dưới
+                    <br />
+                    <span className="text-base text-gray-600 dark:text-gray-400">
+                      Số tiền donate sẽ dùng để nâng cấp server được mượt và chạy tốt hơn
+                    </span>
+                  </p>
+
+                  {/* QR Code - Using placeholder since we need the actual image */}
+                  <div className="flex flex-col items-center gap-4 py-4">
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border-2 border-green-300 dark:border-green-700">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/tcb.png"
+                        alt="QR Code Techcombank"
+                        width={280}
+                        height={280}
+                        className="rounded-lg"
+                      />
+                    </div>
+                    
+                    {/* Account Info */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-2 border-green-300 dark:border-green-700 w-full max-w-md">
+                      <div className="space-y-2 text-center">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                          NGÂN HÀNG TECHCOMBANK (TCB)
+                        </p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-wider">
+                          662636999999
+                        </p>
+                        <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                          TRAN VAN CUONG
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                    💖 Cảm ơn sự ủng hộ của anh em! 💖
+                  </p>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-center pt-4">
+                <Button
+                  onClick={() => setShowDonatePopup(false)}
+                  size="lg"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-12 font-semibold"
+                >
+                  Đóng
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
