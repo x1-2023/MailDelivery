@@ -520,7 +520,7 @@ export default function TrashMailApp() {
             <div className="flex items-center space-x-2">
               {currentUser ? (
                 <>
-                  <div className={`text-sm mr-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                  <div className={`text-sm mr-2 hidden md:block ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                     Welcome, <span className="font-semibold">{currentUser.username}</span>
                     {currentUser.role === "admin" && (
                       <Badge variant="outline" className="ml-2">
@@ -530,7 +530,7 @@ export default function TrashMailApp() {
                   </div>
                 </>
               ) : (
-                <div className={`text-sm mr-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                <div className={`text-sm mr-2 hidden sm:block ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-400">
                     Ẩn danh
                   </Badge>
@@ -539,14 +539,15 @@ export default function TrashMailApp() {
               <Button variant="ghost" size="sm" onClick={() => setDarkMode(!darkMode)}>
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Link href="/api-docs">
+              <Link href="/api-docs" className="hidden md:inline-block">
                 <Button
                   variant="outline"
                   size="sm"
                   className={darkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
                 >
                   <BookOpen className="h-4 w-4 mr-2" />
-                  API Docs
+                  <span className="hidden lg:inline">API Docs</span>
+                  <span className="lg:hidden">API</span>
                 </Button>
               </Link>
               <Button
@@ -554,17 +555,17 @@ export default function TrashMailApp() {
                 size="sm"
                 className="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-semibold border-0"
               >
-                <Heart className="h-4 w-4 mr-2" />
-                Quyên góp
+                <Heart className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Quyên góp</span>
               </Button>
               {currentUser?.role === "admin" && (
-                <Link href="/admin">
+                <Link href="/admin" className="hidden lg:inline-block">
                   <Button
                     variant="outline"
                     size="sm"
                     className={darkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
                   >
-                    Admin Panel
+                    Admin
                   </Button>
                 </Link>
               )}
@@ -584,8 +585,8 @@ export default function TrashMailApp() {
                     size="sm"
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    <Shield className="h-4 w-4 mr-2" />
-                    Login
+                    <Shield className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Login</span>
                   </Button>
                 </Link>
               )}
