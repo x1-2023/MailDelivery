@@ -623,12 +623,12 @@ export default function TrashMailApp() {
 
       {!currentEmail ? (
         /* Hero Section - Before Email Generated */
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <div className="text-center mb-12">
-            <h2 className={`text-5xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
+        <div className="max-w-6xl mx-auto px-4 py-8 sm:py-16">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
               Email tạm thời trong vài giây
             </h2>
-            <p className={`text-xl mb-8 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+            <p className={`text-base sm:text-xl mb-6 sm:mb-8 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
               Nhận địa chỉ email dùng một lần. Không cần đăng ký.
             </p>
             
@@ -770,7 +770,7 @@ export default function TrashMailApp() {
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[500px] p-0" align="start">
+                        <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[500px] max-w-[500px] p-0" align="start">
                           <Command
                             shouldFilter={false}
                           >
@@ -913,7 +913,7 @@ export default function TrashMailApp() {
                       </Popover>
                     ) : (
                       <div
-                        className={`flex-1 text-xl font-mono font-semibold p-4 rounded-lg ${
+                        className={`flex-1 text-base sm:text-xl font-mono font-semibold p-3 sm:p-4 rounded-lg break-all ${
                           darkMode ? "bg-gray-700 text-blue-400" : "bg-gradient-to-r from-blue-50 to-purple-50 text-blue-600"
                         }`}
                       >
@@ -923,10 +923,10 @@ export default function TrashMailApp() {
                     <Button
                       onClick={copyEmail}
                       size="lg"
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 sm:px-6"
                     >
-                      <Copy className="h-5 w-5 mr-2" />
-                      Copy
+                      <Copy className="h-5 w-5 sm:mr-2" />
+                      <span className="hidden sm:inline">Copy</span>
                     </Button>
                     <Button
                       onClick={generateEmail}
@@ -939,8 +939,8 @@ export default function TrashMailApp() {
                         <Refresh className="h-5 w-5 animate-spin" />
                       ) : (
                         <>
-                          <Refresh className="h-5 w-5 mr-2" />
-                          Random
+                          <Refresh className="h-5 w-5 sm:mr-2" />
+                          <span className="hidden sm:inline">Random</span>
                         </>
                       )}
                     </Button>
@@ -949,21 +949,21 @@ export default function TrashMailApp() {
               </div>
 
               {/* Stats */}
-              <div className={`grid grid-cols-3 gap-4 mt-6 pt-6 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+              <div className={`grid grid-cols-3 gap-2 sm:gap-4 mt-6 pt-6 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
                 <div className="text-center">
-                  <div className={`text-3xl font-bold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
+                  <div className={`text-2xl sm:text-3xl font-bold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
                     {emails.length}
                   </div>
                   <div className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Tổng số Emails</div>
                 </div>
                 <div className="text-center">
-                  <div className={`text-3xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}>
+                  <div className={`text-2xl sm:text-3xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}>
                     {emails.filter((e) => !e.read).length}
                   </div>
                   <div className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Chưa đọc</div>
                 </div>
                 <div className="text-center">
-                  <div className={`text-3xl font-bold ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+                  <div className={`text-2xl sm:text-3xl font-bold ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}>
                     {emails.filter((e) => e.starred).length}
                   </div>
                   <div className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Starred</div>
@@ -1317,7 +1317,7 @@ export default function TrashMailApp() {
           
           {/* Popup content - always smaller than screen */}
           <div 
-            className="relative bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto border-2 sm:border-4 border-yellow-400 dark:border-yellow-600"
+            className="relative bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl w-full max-w-3xl max-h-[65vh] overflow-y-auto border-2 sm:border-4 border-yellow-400 dark:border-yellow-600"
             onClick={(e) => e.stopPropagation()}
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
