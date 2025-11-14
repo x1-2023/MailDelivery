@@ -91,4 +91,15 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  html, body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 640px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
