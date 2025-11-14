@@ -528,6 +528,14 @@ export default function TrashMailApp() {
                   API Docs
                 </Button>
               </Link>
+              <Button
+                onClick={() => setShowDonatePopup(true)}
+                size="sm"
+                className="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-semibold border-0"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Donate
+              </Button>
               {currentUser?.role === "admin" && (
                 <Link href="/admin">
                   <Button
@@ -1269,15 +1277,6 @@ export default function TrashMailApp() {
       <footer className={`mt-16 py-8 border-t ${darkMode ? "border-gray-700 bg-gray-900" : "border-gray-200 bg-white"}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col items-center justify-center gap-4">
-            <Button
-              onClick={() => setShowDonatePopup(true)}
-              size="lg"
-              className="bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-semibold px-8 shadow-lg hover:shadow-xl transition-all"
-            >
-              <Heart className="h-5 w-5 mr-2 animate-pulse" />
-              Donate / Ủng Hộ
-              <Heart className="h-5 w-5 ml-2 animate-pulse" />
-            </Button>
             <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
               © 2024 MailDelivery. Protect your privacy with temporary email addresses.
             </p>
