@@ -82,6 +82,8 @@ export default function TrashMailApp() {
   const [showDonatePopup, setShowDonatePopup] = useState(false)
   const [availableDomains, setAvailableDomains] = useState<string[]>(["0xf5.site"])
   const [selectedDomain, setSelectedDomain] = useState<string>("0xf5.site")
+  const [selectorPage, setSelectorPage] = useState(1)
+  const [selectorPerPage] = useState(15)
 
   // Fetch available domains
   const fetchDomains = async () => {
@@ -368,7 +370,8 @@ export default function TrashMailApp() {
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, view])
+    setSelectorPage(1)
+  }, [searchTerm, view, emailSearchQuery])
 
   useEffect(() => {
     if (currentEmail) {
@@ -787,36 +790,93 @@ export default function TrashMailApp() {
                                 </div>
                               </CommandEmpty>
                               <CommandGroup heading={`Your Emails (${myEmails.length})`}>
-                                {myEmails
-                                  .filter((email) =>
+                                {(() => {
+                                  const filtered = myEmails.filter((email) =>
                                     email.email.toLowerCase().includes(emailSearchQuery.toLowerCase())
                                   )
-                                  .slice(0, 10) // Show max 10 results
-                                  .map((email) => (
-                                    <CommandItem
-                                      key={email.email}
-                                      value={email.email}
-                                      onSelect={() => {
-                                        setCurrentEmail(email)
-                                        setEmailSelectorOpen(false)
-                                        setEmailSearchQuery("")
-                                      }}
-                                      className="font-mono"
-                                    >
-                                      <Check
-                                        className={`mr-2 h-4 w-4 ${
-                                          currentEmail.email === email.email ? "opacity-100" : "opacity-0"
-                                        }`}
-                                      />
-                                      {email.email}
-                                    </CommandItem>
-                                  ))}
+                                  const totalSelectorPages = Math.ceil(filtered.length / selectorPerPage)
+                                  const selectorStart = (selectorPage - 1) * selectorPerPage
+                                  const selectorEnd = selectorStart + selectorPerPage
+                                  const displayEmails = filtered.slice(selectorStart, selectorEnd)
+                                  
+                                  return (
+                                    <>
+                                      {displayEmails.map((email) => (
+                                        <CommandItem
+                                          key={email.email}
+                                          value={email.email}
+                                          onSelect={() => {
+                                            setCurrentEmail(email)
+                                            setEmailSelectorOpen(false)
+                                            setEmailSearchQuery("")
+                                            setSelectorPage(1)
+                                          }}
+                                          className="font-mono"
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              currentEmail.email === email.email ? "opacity-100" : "opacity-0"
+                                            }`}
+                                          />
+                                          {email.email}
+                                        </CommandItem>
+                                      ))}
+                                      {totalSelectorPages > 1 && (
+                                        <div className="sticky bottom-0 bg-white dark:bg-gray-950 border-t p-2 space-y-2">
+                                          <div className="text-xs text-center text-muted-foreground">
+                                            Page {selectorPage} of {totalSelectorPages} ({filtered.length} emails)
+                                          </div>
+                                          <div className="flex items-center justify-center gap-2">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => setSelectorPage(Math.max(1, selectorPage - 1))}
+                                              disabled={selectorPage === 1}
+                                              className="h-8"
+                                            >
+                                              ← Prev
+                                            </Button>
+                                            <div className="flex gap-1">
+                                              {Array.from({ length: Math.min(5, totalSelectorPages) }, (_, i) => {
+                                                let pageNum
+                                                if (totalSelectorPages <= 5) {
+                                                  pageNum = i + 1
+                                                } else if (selectorPage <= 3) {
+                                                  pageNum = i + 1
+                                                } else if (selectorPage >= totalSelectorPages - 2) {
+                                                  pageNum = totalSelectorPages - 4 + i
+                                                } else {
+                                                  pageNum = selectorPage - 2 + i
+                                                }
+                                                return (
+                                                  <Button
+                                                    key={pageNum}
+                                                    size="sm"
+                                                    variant={selectorPage === pageNum ? "default" : "outline"}
+                                                    onClick={() => setSelectorPage(pageNum)}
+                                                    className="h-8 w-8 p-0"
+                                                  >
+                                                    {pageNum}
+                                                  </Button>
+                                                )
+                                              })}
+                                            </div>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => setSelectorPage(Math.min(totalSelectorPages, selectorPage + 1))}
+                                              disabled={selectorPage === totalSelectorPages}
+                                              className="h-8"
+                                            >
+                                              Next →
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  )
+                                })()}
                               </CommandGroup>
-                              {myEmails.length > 10 && (
-                                <div className="px-2 py-2 text-xs text-center text-muted-foreground border-t">
-                                  Showing 10 of {myEmails.length} emails. Use search to find more.
-                                </div>
-                              )}
                             </CommandList>
                           </Command>
                         </PopoverContent>
@@ -1228,13 +1288,14 @@ export default function TrashMailApp() {
       {/* Donate Popup - Controlled by button */}
       {showDonatePopup && (
         <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 z-50 overflow-y-auto"
           onClick={() => setShowDonatePopup(false)}
         >
-          <div 
-            className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border-4 border-yellow-400 dark:border-yellow-600"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div 
+              className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full my-8 border-4 border-yellow-400 dark:border-yellow-600"
+              onClick={(e) => e.stopPropagation()}
+            >
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 dark:from-yellow-600 dark:via-orange-600 dark:to-red-600 p-6 text-center relative">
               <button
@@ -1339,6 +1400,7 @@ export default function TrashMailApp() {
                 </Button>
               </div>
             </div>
+          </div>
           </div>
         </div>
       )}
