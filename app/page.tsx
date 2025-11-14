@@ -1308,19 +1308,18 @@ export default function TrashMailApp() {
       {/* Donate Popup - Controlled by button */}
       {showDonatePopup && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-0"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={() => setShowDonatePopup(false)}
         >
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50" />
           
-          {/* Scrollable container */}
-          <div className="relative w-full h-full overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <div className="min-h-full flex items-center justify-center p-2 sm:p-4 py-8">
-              <div 
-                className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl max-w-3xl w-full border-2 sm:border-4 border-yellow-400 dark:border-yellow-600 my-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
+          {/* Popup content - always smaller than screen */}
+          <div 
+            className="relative bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto border-2 sm:border-4 border-yellow-400 dark:border-yellow-600"
+            onClick={(e) => e.stopPropagation()}
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             {/* Header */}
             <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 dark:from-yellow-600 dark:via-orange-600 dark:to-red-600 p-3 sm:p-6 text-center relative">
               <button
@@ -1421,8 +1420,6 @@ export default function TrashMailApp() {
                 >
                   Đóng
                 </Button>
-              </div>
-            </div>
               </div>
             </div>
           </div>
